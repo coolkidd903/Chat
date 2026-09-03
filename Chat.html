@@ -2,27 +2,31 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>P2P Chat — LINE風</title>
+  <title>Secure Chat </title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark">
   <style>
-    /* 軽めのスタイル。必要ならあとで調整 */
-    :root{--bg:#f2f6f8;--panel:#fff;--accent:#00b900;--muted:#6b7280;--border:#e6eef2}
-    html,body{height:100%;margin:0;font-family:"Helvetica Neue", Roboto, "Noto Sans JP", Arial;background:var(--bg);color:#0b1220}
-    .app{max-width:1000px;margin:18px auto;height:calc(100vh - 36px);display:flex;flex-direction:column;gap:12px}
+    :root{
+      --bg:#f2f6f8;--panel:#fff;--accent:#0078d7;--muted:#6b7280;--border:#e6eef2;
+      --danger:#d9534f;--ok:#28a745;
+    }
+    html,body{height:100%;margin:0;font-family:Inter, "Helvetica Neue", Roboto, "Noto Sans JP", Arial;background:var(--bg);color:#0b1220}
+    .app{max-width:1200px;margin:18px auto;height:calc(100vh - 36px);display:flex;flex-direction:column;gap:12px}
     .header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(#fff,#fbfeff);border-radius:10px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
-    .logo{width:36px;height:36px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
-    .title{font-weight:600}
+    .logo{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px}
+    .title{font-weight:700}
     .status{font-size:12px;color:var(--muted)}
     .panel{background:var(--panel);border-radius:12px;padding:8px;border:1px solid var(--border)}
-    .main{flex:1;display:flex;gap:12px}
-    .left-col{width:320px;display:flex;flex-direction:column;gap:10px}
-    .right-col{flex:1;display:flex;flex-direction:column;gap:8px}
-    .peer-list{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:340px}
-    .peer-item{padding:8px;border-radius:8px;display:flex;justify-content:space-between;border:1px solid transparent}
-    .chat-window{flex:1;overflow:auto;padding:16px;background:linear-gradient(#f9fdff,#f2f6f8);border-radius:10px;display:flex;flex-direction:column;gap:10px}
+    .main{flex:1;display:flex;gap:12px;min-height:0}
+    .left-col{width:360px;display:flex;flex-direction:column;gap:10px;min-height:0}
+    .center-col{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+    .right-col{width:360px;display:flex;flex-direction:column;gap:10px}
+    .peer-list{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:40vh}
+    .peer-item{padding:8px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid transparent}
+    .chat-window{flex:1;overflow:auto;padding:16px;background:linear-gradient(#f9fdff,#f2f6f8);border-radius:10px;display:flex;flex-direction:column;gap:10px;min-height:0}
     .msg-row{display:flex;gap:8px;align-items:flex-end}
     .msg-row.me{justify-content:flex-end}
-    .bubble{max-width:72%;padding:10px 12px;border-radius:18px;word-break:break-word;position:relative}
+    .bubble{max-width:72%;padding:10px 12px;border-radius:18px;word-break:break-word;position:relative;box-shadow:0 1px 0 rgba(0,0,0,0.02)}
     .bubble.you{background:#fff;color:#0b1220;border:1px solid rgba(0,0,0,0.03);border-bottom-left-radius:4px}
     .bubble.me{background:#dcf8c6;color:#111;border-bottom-right-radius:4px}
     .input-area{display:flex;gap:8px;padding:10px;align-items:center}
@@ -30,23 +34,42 @@
     .send-btn{background:var(--accent);color:white;border:none;padding:10px 14px;border-radius:999px;cursor:pointer;font-weight:600}
     .small{font-size:12px;color:var(--muted)}
     .modal-backdrop{position:fixed;inset:0;background:rgba(11,17,32,0.45);display:flex;align-items:center;justify-content:center;z-index:50}
-    .modal{background:white;padding:20px;border-radius:12px;width:640px;max-width:96%}
+    .modal{background:white;padding:20px;border-radius:12px;width:760px;max-width:96%}
     .row{margin:8px 0;display:flex;gap:8px;align-items:center}
     label{width:140px;color:var(--muted)}
     .field{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border)}
     button.btn{padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:white;cursor:pointer}
     button.btn-primary{background:var(--accent);color:white;border:none}
+    .sticker-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .sticker-grid img{width:64px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+    .status-ok{background:var(--ok)}
+    .status-warn{background:#f0ad4e}
+    .status-bad{background:var(--danger)}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .file-preview img{max-width:320px;border-radius:8px}
+    .call-controls{display:flex;gap:8px;align-items:center}
+    .muted{opacity:0.5}
+    .danger{color:var(--danger)}
+    .log{font-family:monospace;font-size:12px;max-height:120px;overflow:auto;background:#0b1220;color:#fff;padding:8px;border-radius:8px}
+    /* responsive adjustments */
+    @media (max-width:1100px){ .right-col{display:none} }
     @media (max-width:900px){ .left-col{display:none} }
   </style>
+
+  <!-- CDN libraries (PeerJS & CryptoJS). Using well-known CDNs for convenience. -->
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
   <div class="app" id="app">
     <div class="header panel">
       <div style="display:flex;gap:12px;align-items:center">
-        <div class="logo">P</div>
+        <div class="logo">P2P</div>
         <div>
-          <div class="title">Encrypted P2P Chat</div>
-          <div id="status" class="status">Not connected</div>
+          <div class="title">Secure Chat</div>
+          <div id="status" class="status">Initializing…</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;align-items:center">
@@ -54,90 +77,136 @@
           <div class="small">Name: <strong id="display-name">...</strong></div>
           <div class="small">Your ID: <strong id="my-id">...</strong></div>
         </div>
-        <button id="open-settings" class="btn">Settings</button>
+        <div style="display:flex;gap:8px;">
+          <button id="open-settings" class="btn">Settings</button>
+          <button id="open-sticker-maker" class="btn">Sticker Maker</button>
+        </div>
       </div>
     </div>
 
     <div class="main">
       <div class="left-col panel">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <input id="peer-id" placeholder="相手の Peer ID" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border)" />
+          <input id="peer-id" placeholder="相手の Peer ID" class="field" />
           <button id="connect" class="btn">Connect</button>
         </div>
 
-        <div style="margin-bottom:6px">
-          <label class="small">Shared passphrase (事前共有)</label>
-          <input id="passphrase" value="secret-passphrase" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border)" />
+        <div class="row">
+          <label>Shared passphrase</label>
+          <input id="passphrase" class="field" placeholder="事前に共有したパスフレーズ" />
         </div>
 
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <div class="row toolbar">
           <button id="enable-notif" class="btn">Enable Notifications</button>
-          <div class="small" style="flex:1">Auto-decrypt incoming: <input id="auto-decrypt" type="checkbox" checked /></div>
+          <div class="small">Auto-decrypt: <input id="auto-decrypt" type="checkbox" checked /></div>
         </div>
 
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-          <button id="open-addrbook" class="btn">連絡帳</button>
-          <button id="add-contact" class="btn">Add</button>
+        <div class="row">
+          <label>Contacts</label>
+          <div style="flex:1;display:flex;gap:8px">
+            <button id="open-addrbook" class="btn">Open</button>
+            <button id="add-contact" class="btn">Add</button>
+          </div>
         </div>
-
-        <div class="info small">PeerServer: <span id="peer-server-info">host:9000/path</span></div>
 
         <div style="margin-top:10px">
-          <div class="small">最近の受信</div>
-          <div id="recent-list" class="peer-list" style="max-height:200px"></div>
+          <div class="small">Stickers</div>
+          <div id="stickers-panel" class="sticker-grid" style="margin-top:8px"></div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="small">Logs</div>
+          <div id="log" class="log"></div>
         </div>
       </div>
 
-      <div class="right-col">
-        <div class="panel" style="padding:12px;display:flex;flex-direction:column;min-height:300px">
+      <div class="center-col">
+        <div class="panel" style="display:flex;flex-direction:column;min-height:0;gap:8px">
           <div class="chat-window" id="chat-window" aria-live="polite"></div>
 
           <div class="input-area">
             <input id="msg" class="text-input" placeholder="メッセージを入力…" />
+            <input id="file-input" type="file" accept="image/*" style="display:none" />
+            <button id="attach" class="btn">Attach</button>
             <button id="send" class="send-btn">Send</button>
           </div>
 
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px">
-            <div class="small">Tip: 同じ passphrase を相手と事前共有してください。</div>
-            <div class="small">PeerJS server port: <span id="server-port">9000</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="small">Tip: Use strong passphrases and confirm them out-of-band.</div>
+            <div class="call-controls">
+              <button id="call-btn" class="btn">Call</button>
+              <button id="hangup-btn" class="btn">Hangup</button>
+              <button id="mute-btn" class="btn">Mute</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <div class="right-col panel">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="small">Peer server</div>
+            <div class="small" id="peer-server-info">default</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="small">Recent</div>
+          <div id="recent-list" class="peer-list" style="margin-top:8px"></div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="small">Active call</div>
+          <div id="call-state" style="margin-top:8px">No call</div>
+        </div>
+
+      </div>
     </div>
 
-    <div class="panel" style="padding:10px;border-radius:12px;font-size:13px">
-      <strong>Run / Dev</strong>
-      <div class="small" style="margin-top:6px">
-        1) Signaling server を起動: <code>npx peerjs-server --port 9000 --path /peerjs</code><br/>
-        2) vendor/peerjs.min.js と vendor/crypto-js.min.js を用意する（リポジトリに置いてください）。
-      </div>
+    <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+      <div class="small">Adapter: PeerJS + AES</div>
     </div>
   </div>
 
-  <!-- Load vendor libs (local vendor first, fallback to CDN) -->
   <script>
-    (function(){
-      const VENDOR = { peer: 'vendor/peerjs.min.js', crypto: 'vendor/crypto-js.min.js' };
-      const CDN = { peer: 'https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js', crypto: 'https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js' };
-      function loadScript(src){ return new Promise((res,rej)=>{ if(!src) return rej('no src'); if(Array.from(document.scripts).some(s=>s.src&&s.src.indexOf(src)!==-1)) return res(); const s=document.createElement('script'); s.src=src; s.onload=()=>res(); s.onerror=()=>rej(src); document.head.appendChild(s); }); }
-      async function ensureLibs(){
-        try{
-          if(typeof Peer === 'undefined'){
-            try{ await loadScript(VENDOR.peer); } catch(e){ await loadScript(CDN.peer); }
-          }
-          if(typeof CryptoJS === 'undefined'){
-            try{ await loadScript(VENDOR.crypto); } catch(e){ await loadScript(CDN.crypto); }
-          }
-        }catch(e){ console.warn('Lib load failed', e); }
-      }
-      window.addEventListener('load', ensureLibs);
-    })();
-  </script>
+  /************************************************************************
+   * Full client-side implementation (single-file).
+   * Features:
+   * - PeerJS data connection + media (audio) calls
+   * - AES encryption (CryptoJS) with chunked image transfer
+   * - Sticker maker & upload (PNG/GIF)
+   * - Settings, backup (encrypted), import
+   * - Reconnect logic, periodic RTCPeerConnection analysis to detect relay changes
+   * - Decryption failure counters & security alerts (alert + UI banner + Notification)
+   ************************************************************************/
 
-  <!-- App logic (uses PeerJS and CryptoJS from vendor/) -->
-  <script>
-    // LocalStorage keys
-    const LS = { name:'p2p_displayName', contacts:'p2p_contacts', peerCfg:'p2p_peerCfg', settings:'p2p_settings', recent:'p2p_recent' };
+  (function(){
+    // Config / constants
+    const CHUNK_SIZE = 60 * 1024; // chunk size for encrypted string
+    const LS = {
+      name: 'p2p_displayName',
+      contacts: 'p2p_contacts',
+      settings: 'p2p_settings',
+      recent: 'p2p_recent',
+      stickers: 'p2p_stickers',
+      messages: 'p2p_messages' // object keyed by peer id
+    };
+    const DEFAULT_PEER_CFG = { host: location.hostname || '0.peerjs.com', port: 9000, path: '/peerjs', secure: location.protocol === 'https:' };
+
+    // State
+    let peer = null;
+    let conn = null;
+    let localStream = null;
+    let currentCall = null;
+    let isMuted = false;
+    let displayName = localStorage.getItem(LS.name) || '';
+    let contacts = loadJSON(LS.contacts) || [];
+    let settings = loadJSON(LS.settings) || { peerCfg: DEFAULT_PEER_CFG };
+    let recvBuffers = {}; // for chunked images {id: {chunks:[], received, total, meta}}
+    let decryptionFailures = {}; // {peerId: {count, since}}
+    let securityIntervals = new WeakMap(); // connection -> interval id
+    let reconnectTimer = null;
+    let logEl = document.getElementById('log');
 
     // UI refs
     const statusEl = document.getElementById('status');
@@ -148,291 +217,825 @@
     const passInput = document.getElementById('passphrase');
     const sendBtn = document.getElementById('send');
     const msgInput = document.getElementById('msg');
+    const attachBtn = document.getElementById('attach');
+    const fileInput = document.getElementById('file-input');
     const connectBtn = document.getElementById('connect');
+    const enableNotifBtn = document.getElementById('enable-notif');
     const autoDecryptEl = document.getElementById('auto-decrypt');
     const recentListEl = document.getElementById('recent-list');
+    const stickersPanel = document.getElementById('stickers-panel');
+    const callBtn = document.getElementById('call-btn');
+    const hangupBtn = document.getElementById('hangup-btn');
+    const muteBtn = document.getElementById('mute-btn');
+    const callStateEl = document.getElementById('call-state');
 
-    // state
-    let peer = null, conn = null;
-    let peerCfg = { host: location.hostname, port:9000, path:'/peerjs', secure: location.protocol === 'https:' };
-    let contacts = JSON.parse(localStorage.getItem(LS.contacts) || '[]');
-    let settings = JSON.parse(localStorage.getItem(LS.settings) || '{}');
-    let displayName = localStorage.getItem(LS.name) || '';
-
-    function refreshHeader(){ displayNameEl.textContent = displayName || '(未設定)'; }
-    refreshHeader();
-
-    function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){return null} }
+    // helpers
+    function log(...args){ try{ logEl.textContent += args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\\n'; logEl.scrollTop = logEl.scrollHeight; }catch(e){} console.log(...args); }
     function saveJSON(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+    function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function now(){ return new Date().toISOString(); }
+    function setStatus(text, kind){ statusEl.textContent = text; if(kind==='ok') statusEl.style.color='var(--ok)'; else if(kind==='warn') statusEl.style.color='#f0ad4e'; else if(kind==='bad') statusEl.style.color='var(--danger)'; else statusEl.style.color=''; }
+    function showAlert(message){
+      try{ alert('Security alert: ' + message); } catch(e){}
+      // banner
+      const existing = document.getElementById('security-alert-banner');
+      if(existing) existing.remove();
+      const b = document.createElement('div');
+      b.id = 'security-alert-banner';
+      b.style.position = 'fixed';
+      b.style.bottom = '16px';
+      b.style.left = '16px';
+      b.style.right = '16px';
+      b.style.background = '#fff3f3';
+      b.style.border = '1px solid #f5c2c2';
+      b.style.color = '#8b0000';
+      b.style.padding = '12px';
+      b.style.borderRadius = '8px';
+      b.style.zIndex = 9999;
+      b.innerHTML = '<strong>Security:</strong> ' + escapeHtml(message) + ' <button id="security-dismiss" style="margin-left:12px">Dismiss</button>';
+      document.body.appendChild(b);
+      document.getElementById('security-dismiss').onclick = ()=>b.remove();
+      try{ if(Notification && Notification.permission === 'granted') new Notification('Security alert', { body: message, tag:'p2p-security' }); }catch(e){}
+      log('[SECURITY]', message);
+    }
+
+    /* Security heuristics */
+    function recordDecryptionFailure(peerId){
+      if(!peerId) peerId='unknown';
+      const s = decryptionFailures[peerId] || { count:0, since: Date.now() };
+      s.count++;
+      decryptionFailures[peerId] = s;
+      if(s.count >= 3){
+        showAlert('復号に3回連続で失敗しました。パスフレーズが漏れているかメッセージが改竄されている可能性があります。オフラインでパスフレーズを再確認してください。');
+        s.count = 0; // reset to avoid repeated alerts
+      }
+    }
+    function recordDecryptionSuccess(peerId){
+      if(!peerId) peerId='unknown';
+      if(decryptionFailures[peerId]) decryptionFailures[peerId].count = 0;
+    }
+
+    // Try to get RTCPeerConnection from PeerJS connection object (heuristic)
+    function getRTCPeerConnectionFromConn(connection){
+      if(!connection) return null;
+      // PeerJS data connection object often has a reference to _pc or peerConnection
+      return connection.peerConnection || connection._pc || connection._peerConnection || (connection._connection && connection._connection.peerConnection) || null;
+    }
+
+    // analyze stats to detect relay (TURN) usage
+    async function analyzeConnectionSecurity(connection){
+      const pc = getRTCPeerConnectionFromConn(connection);
+      if(!pc || typeof pc.getStats !== 'function') return;
+      try{
+        const stats = await pc.getStats();
+        const reports = [];
+        if(typeof stats.forEach === 'function'){
+          stats.forEach(r => { reports.push(r); });
+        } else if(Array.isArray(stats)) {
+          reports.push(...stats);
+        } else if(stats.result) {
+          stats.result().forEach(r => reports.push(r));
+        } else {
+          return;
+        }
+        // find selected candidate pair
+        let selected = null;
+        for(const r of reports){
+          if((r.type === 'candidate-pair' || r.type === 'candidatePair') && (r.selected === true || r.nominated === true || r.state === 'succeeded')){ selected = r; break; }
+        }
+        if(!selected){
+          // fallback - look for succeeded
+          for(const r of reports){ if(r.type === 'candidate-pair' || r.type === 'candidatePair'){ if(r.state === 'succeeded'){ selected = r; break; } } }
+        }
+        if(!selected) return;
+        const localId = selected.localCandidateId || selected.localCandidate || selected.local;
+        const remoteId = selected.remoteCandidateId || selected.remoteCandidate || selected.remote;
+        let localCand = null, remoteCand = null;
+        for(const r of reports){
+          if(!r || !r.id) continue;
+          if(r.id === localId) localCand = r;
+          if(r.id === remoteId) remoteCand = r;
+          if(!localCand && (r.type === 'local-candidate' || r.type === 'localCandidate') && r.id === localId) localCand = r;
+          if(!remoteCand && (r.type === 'remote-candidate' || r.type === 'remoteCandidate') && r.id === remoteId) remoteCand = r;
+        }
+        // Determine candidate types
+        const remoteType = (remoteCand && (remoteCand.candidateType || remoteCand.type || (remoteCand.candidate && remoteCand.candidate.includes('typ relay')))) ? (remoteCand.candidateType || remoteCand.type) : null;
+        const isRemoteRelay = remoteType === 'relay' || (remoteCand && ((remoteCand.candidate && /typ relay/i.test(remoteCand.candidate)) || /turn/i.test(remoteCand.url||remoteCand.candidate||'')));
+        connection._security = connection._security || {};
+        if(isRemoteRelay && !connection._security.wasRelayOnly){
+          connection._security.wasRelayOnly = true;
+          showAlert('接続がTURN(relay)を経由するようになりました。経路が変化しています（peer: ' + (connection.peer || 'unknown') + '）。パスフレーズをオフラインで再確認してください。');
+        } else if(!isRemoteRelay && connection._security.wasRelayOnly){
+          connection._security.wasRelayOnly = false;
+          log('Connection route reverted to non-relay for', connection.peer);
+        }
+      }catch(e){ console.warn('analyzeConnectionSecurity error', e); }
+    }
+
+    function registerSecurityChecks(connection){
+      if(!connection) return;
+      // ensure only one interval per connection
+      unregisterSecurityChecks(connection);
+      const iv = setInterval(()=> analyzeConnectionSecurity(connection), 7000);
+      securityIntervals.set(connection, iv);
+    }
+    function unregisterSecurityChecks(connection){
+      if(!connection) return;
+      const iv = securityIntervals.get(connection);
+      if(iv) clearInterval(iv);
+      securityIntervals.delete(connection);
+    }
+
+    /* Messaging: storing, rendering */
+    function storeMessage(peerId, msgObj){
+      const all = loadJSON(LS.messages) || {};
+      all[peerId] = all[peerId] || [];
+      all[peerId].push(msgObj);
+      // cap size
+      if(all[peerId].length > 500) all[peerId].shift();
+      saveJSON(LS.messages, all);
+    }
+    function loadMessages(peerId){ const all = loadJSON(LS.messages) || {}; return all[peerId] || []; }
+
+    function appendChatMessage({peerId, who, text, type='text', meta={}}){
+      // who = 'me' | 'you'
+      const row = document.createElement('div');
+      row.className = 'msg-row ' + (who === 'me' ? 'me' : 'you');
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (who === 'me' ? 'me' : 'you');
+      if(type === 'text'){ bubble.innerHTML = `<div>${escapeHtml(text)}</div>`; }
+      else if(type === 'image'){
+        const img = document.createElement('img'); img.src = text; img.className='file-preview'; img.style.maxWidth='420px'; img.style.borderRadius='8px';
+        bubble.appendChild(img);
+      } else {
+        bubble.innerHTML = `<div>${escapeHtml(text)}</div>`;
+      }
+      const metaDiv = document.createElement('div'); metaDiv.className='small'; metaDiv.style.marginTop='6px'; metaDiv.style.textAlign='right';
+      metaDiv.textContent = `${new Date().toLocaleTimeString()} ${meta.encrypted ? '🔒':''}`;
+      bubble.appendChild(metaDiv);
+      row.appendChild(bubble);
+      chatWindow.appendChild(row);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    /* Security: integrate alerts into data handling (decryption tracking) - called below in data receive */
+
+    /* Peer management: ensure peer instance exists; support recreate */
+    function createPeer(){
+      // read config from settings or default
+      const cfg = (settings && settings.peerCfg) ? settings.peerCfg : DEFAULT_PEER_CFG;
+      try{
+        const options = { host: cfg.host, port: cfg.port, path: cfg.path, secure: !!cfg.secure };
+        log('Creating Peer with options', options);
+        const newPeer = new Peer(undefined, options);
+        setupPeerEvents(newPeer);
+        return newPeer;
+      }catch(e){
+        log('Peer creation error', e);
+        setStatus('Peer creation failed', 'bad');
+        return null;
+      }
+    }
+
+    function ensurePeer(){
+      if(peer && !peer.destroyed){
+        // try to reconnect if disconnected
+        if(peer.disconnected){
+          try{
+            if(typeof peer.reconnect === 'function'){
+              peer.reconnect();
+              setStatus('Reconnecting to signaling...', 'warn');
+              return;
+            } else {
+              // destroy and recreate
+              peer.destroy();
+              peer = null;
+            }
+          }catch(e){ peer = null; }
+        } else return; // available
+      }
+      peer = createPeer();
+    }
+
+    function setupPeerEvents(p){
+      p.on('open', id => {
+        myIdEl.textContent = id;
+        setStatus('Connected to signaling (id: '+id+')', 'ok');
+        log('Peer open', id);
+      });
+      p.on('disconnected', ()=>{
+        setStatus('Signaling disconnected', 'warn');
+        log('Peer disconnected, will attempt reconnect');
+        // attempt to reconnect periodically by creating a fresh peer after a delay
+        schedulePeerReconnect();
+      });
+      p.on('close', ()=>{
+        setStatus('Peer connection closed', 'bad');
+        log('Peer closed');
+      });
+      p.on('error', err => {
+        setStatus('Peer error: '+ (err && err.type ? err.type : err), 'bad');
+        log('Peer error', err);
+        // if invalid key/id, show alert
+      });
+      // incoming data connection
+      p.on('connection', c => {
+        // Accept only one data connection at a time per UI; if multiple, allow but assign
+        log('Incoming data connection from', c.peer);
+        if(conn && conn.open){
+          // optionally close new connection if we prefer single
+          // or keep both: here we'll close the new one for simplicity
+          c.on('open', ()=>{ c.send({ type:'info', msg:'Already connected' }); c.close(); });
+          return;
+        }
+        conn = c;
+        bindConn();
+      });
+      // incoming call
+      p.on('call', async call => {
+        log('Incoming call from', call.peer);
+        const modal = createModal('Incoming Call');
+        const box = modal.querySelector('.modal');
+        box.innerHTML += '<p>Incoming audio call from: <strong>' + escapeHtml(call.peer) + '</strong></p>';
+        const accept = document.createElement('button'); accept.className='btn btn-primary'; accept.textContent='Accept';
+        const decline = document.createElement('button'); decline.className='btn'; decline.textContent='Decline';
+        box.appendChild(accept); box.appendChild(decline);
+        accept.onclick = async () => {
+          closeModal(modal);
+          try{
+            const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+            localStream = s;
+            call.answer(s);
+            bindCall(call);
+            setStatus('In call (incoming)', 'ok');
+          }catch(e){
+            alert('Failed to get microphone: ' + e);
+            call.close();
+          }
+        };
+        decline.onclick = () => { closeModal(modal); call.close(); };
+      });
+    }
+
+    function schedulePeerReconnect(){
+      if(reconnectTimer) return;
+      reconnectTimer = setInterval(()=>{
+        log('Attempting peer recreate...');
+        try{
+          if(peer && !peer.destroyed) { peer.destroy(); peer = null; }
+        }catch(e){}
+        ensurePeer();
+      }, 5000);
+    }
+    function stopPeerReconnect(){
+      if(reconnectTimer){ clearInterval(reconnectTimer); reconnectTimer = null; }
+    }
+
+    /* Data connection binding */
+    function bindConn(){
+      if(!conn) return;
+      log('Binding data connection', conn.peer);
+      setStatus('Connected to ' + conn.peer, 'ok');
+      // register security checks
+      registerSecurityChecks(conn);
+
+      conn.on('open', () => {
+        log('Data connection open to', conn.peer);
+        setStatus('Data connected to ' + conn.peer, 'ok');
+        loadConversation(conn.peer);
+      });
+
+      conn.on('data', data => {
+        try{
+          if(!data) return;
+          if(typeof data !== 'object') return;
+          if(data.type === 'msg'){
+            // encrypted text
+            const pass = passInput.value;
+            appendChatMessage({ peerId: conn.peer, who:'you', text: '(encrypted)', type:'text', meta:{ encrypted:true } });
+            storeMessage(conn.peer, { who:'you', type:'text', encrypted:true, payloadPreview: data.preview || '', ts: now() });
+            if(autoDecryptEl.checked && pass){
+              const plain = decryptString(data.payload, pass);
+              if(plain){
+                recordDecryptionSuccess(conn.peer);
+                appendChatMessage({ peerId: conn.peer, who:'you', text: plain, type:'text', meta:{ encrypted:false } });
+                storeMessage(conn.peer, { who:'you', type:'text', encrypted:false, payload: plain, ts: now() });
+                if(document.hidden) notifyUser('Message', plain);
+              } else {
+                recordDecryptionFailure(conn.peer);
+                appendChatMessage({ peerId: conn.peer, who:'you', text:'(復号失敗)', type:'text', meta:{ encrypted:false } });
+              }
+            } else {
+              // do nothing
+            }
+          } else if(data.type === 'image-chunk'){
+            // chunked encrypted image
+            const { id, index, total, filename, mime } = data;
+            recvBuffers[id] = recvBuffers[id] || { chunks: [], received:0, total, filename, mime, t: Date.now() };
+            recvBuffers[id].chunks[index] = data.data;
+            recvBuffers[id].received++;
+            if(recvBuffers[id].received === recvBuffers[id].total){
+              const encrypted = recvBuffers[id].chunks.join('');
+              delete recvBuffers[id];
+              const pass = passInput.value;
+              const plainDataUrl = decryptString(encrypted, pass);
+              if(plainDataUrl){
+                recordDecryptionSuccess(conn.peer);
+                appendChatMessage({ peerId: conn.peer, who:'you', text: plainDataUrl, type:'image', meta:{ encrypted:false } });
+                storeMessage(conn.peer, { who:'you', type:'image', encrypted:false, payload: plainDataUrl, ts: now() });
+                if(document.hidden) notifyUser('Image', filename || 'image');
+              } else {
+                recordDecryptionFailure(conn.peer);
+                appendChatMessage({ peerId: conn.peer, who:'you', text:'(画像受信: 復号失敗)', type:'text', meta:{ encrypted:false } });
+              }
+            }
+          } else if(data.type === 'sticker'){
+            // send sticker as dataURL but encrypted as payload
+            const pass = passInput.value;
+            const plain = decryptString(data.payload, pass);
+            if(plain){
+              recordDecryptionSuccess(conn.peer);
+              appendChatMessage({ peerId: conn.peer, who:'you', text: plain, type:'image' });
+              storeMessage(conn.peer, { who:'you', type:'sticker', payload: plain, ts: now() });
+            } else {
+              recordDecryptionFailure(conn.peer);
+              appendChatMessage({ peerId: conn.peer, who:'you', text:'(sticker decrypt fail)', type:'text' });
+            }
+          } else {
+            appendChatMessage({ peerId: conn.peer, who:'you', text: 'Unknown message: ' + JSON.stringify(data), type:'text' });
+          }
+        }catch(e){
+          log('Error handling inbound data', e);
+        }
+      });
+
+      conn.on('close', ()=> {
+        log('Data connection closed', conn.peer);
+        unregisterSecurityChecks(conn);
+        setStatus('Data connection closed', 'warn');
+      });
+
+      conn.on('error', e => {
+        log('Connection error', e);
+        showAlert('Data connection error: ' + (e && e.message ? e.message : e));
+      });
+    }
+
+    /* Data sending helpers */
+    function encryptString(plain, pass){
+      return CryptoJS.AES.encrypt(plain, pass).toString();
+    }
+    function decryptString(ciphertext, pass){
+      try{
+        const bytes = CryptoJS.AES.decrypt(ciphertext, pass);
+        return bytes.toString(CryptoJS.enc.Utf8);
+      }catch(e){ return null; }
+    }
+
+    sendBtn.addEventListener('click', () => {
+      if(!conn || !conn.open) return alert('接続がありません');
+      const plain = msgInput.value.trim();
+      if(!plain) return;
+      const pass = passInput.value;
+      if(!pass) return alert('パスフレーズを入力してください');
+      try{
+        const encrypted = encryptString(plain, pass);
+        conn.send({ type:'msg', payload: encrypted, preview: plain.slice(0,160) });
+        appendChatMessage({ peerId: conn.peer, who:'me', text: plain, type:'text', meta:{ encrypted:true } });
+        storeMessage(conn.peer, { who:'me', type:'text', encrypted:true, payload: plain, ts: now() });
+        msgInput.value = '';
+      }catch(e){
+        log('Send failed', e);
+        alert('送信失敗: ' + e);
+      }
+    });
+
+    // attach file flow
+    attachBtn.addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', async (ev) => {
+      const f = ev.target.files[0];
+      if(!f) return;
+      if(!conn || !conn.open) return alert('接続がありません');
+      const pass = passInput.value; if(!pass) return alert('パスフレーズを入力してください');
+      if(!f.type.startsWith('image/')) return alert('画像のみ対応');
+      // read dataURL
+      const dataUrl = await new Promise((res,rej)=>{
+        const fr = new FileReader();
+        fr.onload = ()=>res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(f);
+      });
+      // encrypt then chunk
+      const encrypted = encryptString(dataUrl, pass);
+      const id = generateId('img');
+      const total = Math.ceil(encrypted.length / CHUNK_SIZE);
+      for(let i=0;i<total;i++){
+        const chunk = encrypted.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE);
+        conn.send({ type:'image-chunk', id, index:i, total, filename: f.name, mime: f.type, data: chunk });
+        await new Promise(r=>setTimeout(r, 10)); // throttle tiny
+      }
+      appendChatMessage({ peerId: conn.peer, who:'me', text:'(画像送信: '+f.name+')', type:'text', meta:{ encrypted:true } });
+      storeMessage(conn.peer, { who:'me', type:'image', encrypted:true, payloadPreview: f.name, ts: now() });
+      fileInput.value = '';
+    });
+
+    /* Call handling */
+    async function bindCall(call){
+      currentCall = call;
+      updateCallUI();
+      call.on('stream', remoteStream => {
+        // show audio
+        const audioId = 'remote-audio';
+        let audio = document.getElementById(audioId);
+        if(!audio){
+          audio = document.createElement('audio'); audio.id = audioId; audio.autoplay = true; audio.controls = true;
+          document.body.appendChild(audio);
+        }
+        audio.srcObject = remoteStream;
+      });
+      call.on('close', ()=> {
+        log('Call closed');
+        teardownCall();
+      });
+      call.on('error', e => {
+        log('Call error', e);
+        showAlert('Call error: ' + (e && e.message ? e.message : e));
+        teardownCall();
+      });
+    }
+    function teardownCall(){
+      if(currentCall){
+        try{ currentCall.close(); }catch(e){}
+        currentCall = null;
+      }
+      if(localStream){
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      const audio = document.getElementById('remote-audio'); if(audio) audio.remove();
+      updateCallUI();
+      setStatus('Call ended', 'warn');
+    }
+    function updateCallUI(){
+      if(currentCall){
+        callStateEl.textContent = 'In call with ' + (conn ? conn.peer : 'peer');
+        callBtn.disabled = true;
+        hangupBtn.disabled = false;
+      } else {
+        callStateEl.textContent = 'No call';
+        callBtn.disabled = false;
+        hangupBtn.disabled = true;
+      }
+    }
+    callBtn.addEventListener('click', async () => {
+      if(!peer) return alert('Peer not ready');
+      const target = peerIdInput.value.trim(); if(!target) return alert('Peer ID を入力');
+      try{
+        const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+        localStream = s;
+        const call = peer.call(target, s);
+        bindCall(call);
+        setStatus('Calling ' + target, 'warn');
+      }catch(e){
+        alert('マイクアクセス失敗: ' + e);
+      }
+    });
+    hangupBtn.addEventListener('click', ()=>{
+      teardownCall();
+    });
+    muteBtn.addEventListener('click', ()=>{
+      if(!localStream) return;
+      isMuted = !isMuted;
+      localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+      muteBtn.textContent = isMuted ? 'Unmute' : 'Mute';
+    });
+
+    /* Connection setup / bind */
+    function bindConnEvents(c){
+      conn = c;
+      bindConn();
+    }
+
+    // When creating local connection (initiator)
+    connectBtn.addEventListener('click', ()=>{
+      ensurePeer();
+      if(!peer) return alert('Signaling not ready');
+      const target = peerIdInput.value.trim(); if(!target) return alert('Peer ID を入力');
+      if(conn && conn.open) {
+        if(!confirm('既に接続中。新しい接続で上書きしますか？')) return;
+        try{ conn.close(); }catch(e){}
+        conn = null;
+      }
+      const options = { reliable: true };
+      const c = peer.connect(target, options);
+      c.on('open', ()=>{ log('Outbound data open to', target); setStatus('Connected to ' + target, 'ok'); loadConversation(target); });
+      c.on('error', e => { log('Connection error', e); setStatus('Connection error', 'bad'); showAlert('Connection error: ' + (e && e.message ? e.message : e)); });
+      c.on('close', ()=>{ log('Connection closed'); setStatus('Conn closed', 'warn'); unregisterSecurityChecks(c); });
+      conn = c;
+      bindConn();
+    });
+
+    /* Connection security integration */
+    // register security checks in bindConn() which is already called in setup
+
+    /* Sticker maker UI & persistence */
+    function renderStickers(){
+      stickersPanel.innerHTML = '';
+      const arr = loadJSON(LS.stickers) || [];
+      arr.forEach((s, idx)=>{
+        const img = document.createElement('img'); img.src = s.dataUrl; img.title = 'Send sticker';
+        img.addEventListener('click', async ()=> {
+          if(!conn || !conn.open) return alert('接続がありません');
+          const pass = passInput.value; if(!pass) return alert('パスフレーズを入力してください');
+          const encrypted = encryptString(s.dataUrl, pass);
+          conn.send({ type:'sticker', payload: encrypted });
+          appendChatMessage({ peerId: conn.peer, who:'me', text: '(sticker sent)', type:'text', meta:{ encrypted:true }});
+          storeMessage(conn.peer, { who:'me', type:'sticker', payloadPreview: '(sticker)', ts: now() });
+        });
+        stickersPanel.appendChild(img);
+      });
+    }
+    document.getElementById('open-sticker-maker').addEventListener('click', openStickerMaker);
+    function openStickerMaker(){
+      const m = createModal('Sticker Maker');
+      const modal = m.querySelector('.modal');
+      modal.innerHTML = '<h3>Sticker Maker</h3>';
+      const file = document.createElement('input'); file.type = 'file'; file.accept = 'image/*';
+      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; canvas.style.border='1px solid #ddd'; canvas.style.display='block'; canvas.style.marginTop='8px';
+      const ctx = canvas.getContext('2d');
+      const saveBtn = document.createElement('button'); saveBtn.className='btn btn-primary'; saveBtn.textContent = 'Save';
+      const closeBtn = document.createElement('button'); closeBtn.className='btn'; closeBtn.textContent = 'Close';
+      modal.appendChild(file); modal.appendChild(canvas);
+      const ctrl = document.createElement('div'); ctrl.style.marginTop='8px'; ctrl.appendChild(saveBtn); ctrl.appendChild(closeBtn); modal.appendChild(ctrl);
+      file.onchange = async ()=> {
+        const f = file.files[0]; if(!f) return;
+        const url = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(f); });
+        const img = new Image(); img.onload = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }; img.src = url;
+      };
+      saveBtn.onclick = ()=> {
+        const dataUrl = canvas.toDataURL('image/png');
+        const arr = loadJSON(LS.stickers) || [];
+        arr.unshift({ dataUrl, created: Date.now() });
+        saveJSON(LS.stickers, arr);
+        renderStickers();
+        closeModal(m);
+      };
+      closeBtn.onclick = ()=> closeModal(m);
+    }
+
+    /* Settings modal */
+    document.getElementById('open-settings').addEventListener('click', ()=> {
+      const m = createModal('Settings');
+      const modal = m.querySelector('.modal');
+      modal.innerHTML = '<h3>Settings</h3>';
+      const nameRow = document.createElement('div'); nameRow.className='row';
+      nameRow.innerHTML = `<label>Display name</label><input id="s_name" class="field" value="${escapeHtml(displayName)}" />`;
+      const hostRow = document.createElement('div'); hostRow.className='row';
+      const cfg = settings.peerCfg || DEFAULT_PEER_CFG;
+      hostRow.innerHTML = `<label>Peer host</label><input id="s_host" class="field" value="${escapeHtml(cfg.host)}" />`;
+      const portRow = document.createElement('div'); portRow.className='row';
+      portRow.innerHTML = `<label>Peer port</label><input id="s_port" class="field" value="${escapeHtml(cfg.port)}" />`;
+      const pathRow = document.createElement('div'); pathRow.className='row';
+      pathRow.innerHTML = `<label>Peer path</label><input id="s_path" class="field" value="${escapeHtml(cfg.path)}" />`;
+      modal.appendChild(nameRow); modal.appendChild(hostRow); modal.appendChild(portRow); modal.appendChild(pathRow);
+
+      const backupRow = document.createElement('div'); backupRow.className='row';
+      const exportBtn = document.createElement('button'); exportBtn.className='btn btn-primary'; exportBtn.textContent='Export Encrypted Backup';
+      const importInput = document.createElement('input'); importInput.type='file'; importInput.accept='text/*';
+      backupRow.appendChild(exportBtn); backupRow.appendChild(importInput);
+      modal.appendChild(backupRow);
+
+      exportBtn.onclick = ()=> {
+        const pass = prompt('Enter backup passphrase'); if(!pass) return;
+        const payload = { displayName, contacts, settings, stickers: loadJSON(LS.stickers) || [], messages: loadJSON(LS.messages) || {} };
+        const enc = CryptoJS.AES.encrypt(JSON.stringify(payload), pass).toString();
+        const blob = new Blob([enc], { type: 'text/plain' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'p2p-backup-' + (new Date().toISOString()) + '.enc.txt'; a.click();
+        URL.revokeObjectURL(a.href);
+      };
+      importInput.onchange = async (e) => {
+        const f = e.target.files[0]; if(!f) return;
+        const text = await f.text();
+        const pass = prompt('Enter import passphrase'); if(!pass) return;
+        try{
+          const raw = CryptoJS.AES.decrypt(text, pass).toString(CryptoJS.enc.Utf8);
+          const obj = JSON.parse(raw);
+          if(!confirm('Import will overwrite local data. Continue?')) return;
+          displayName = obj.displayName || displayName;
+          contacts = obj.contacts || contacts;
+          settings = obj.settings || settings;
+          saveJSON(LS.stickers, obj.stickers || []);
+          saveJSON(LS.messages, obj.messages || {});
+          localStorage.setItem(LS.name, displayName);
+          saveJSON(LS.contacts, contacts);
+          saveJSON(LS.settings, settings);
+          renderStickers(); renderContacts(); renderRecent();
+          alert('Imported');
+          closeModal(m);
+        }catch(err){ alert('Import failed: ' + err); }
+      };
+
+      const footer = document.createElement('div'); footer.style.marginTop = '12px'; footer.style.display='flex'; footer.style.justifyContent='flex-end'; footer.style.gap='8px';
+      const saveBtn = document.createElement('button'); saveBtn.className='btn btn-primary'; saveBtn.textContent = 'Save';
+      const closeBtn = document.createElement('button'); closeBtn.className='btn'; closeBtn.textContent='Cancel';
+      footer.appendChild(closeBtn); footer.appendChild(saveBtn);
+      modal.appendChild(footer);
+
+      closeBtn.onclick = ()=> closeModal(m);
+      saveBtn.onclick = ()=> {
+        displayName = document.getElementById('s_name').value.trim();
+        const host = document.getElementById('s_host').value.trim();
+        const port = Number(document.getElementById('s_port').value) || DEFAULT_PEER_CFG.port;
+        const path = document.getElementById('s_path').value.trim() || DEFAULT_PEER_CFG.path;
+        settings.peerCfg = { host, port, path, secure: location.protocol === 'https:' };
+        localStorage.setItem(LS.name, displayName);
+        saveJSON(LS.settings, settings);
+        refreshUI();
+        closeModal(m);
+        // recreate peer with new settings
+        try{ if(peer) peer.destroy(); }catch(e){}
+        peer = null;
+        ensurePeer();
+      };
+    });
+
+    /* Contacts UI */
+    document.getElementById('open-addrbook').addEventListener('click', openContacts);
+    document.getElementById('add-contact').addEventListener('click', ()=>{
+      const name = prompt('Name'); if(!name) return;
+      const id = prompt('Peer ID'); if(!id) return;
+      contacts.unshift({ name, id });
+      saveJSON(LS.contacts, contacts);
+      renderContacts();
+    });
+    function openContacts(){
+      const m = createModal('Contacts');
+      const modal = m.querySelector('.modal');
+      modal.innerHTML = '<h3>Contacts</h3>';
+      const box = document.createElement('div'); box.style.maxHeight='60vh'; box.style.overflow='auto';
+      contacts.forEach((c,i)=>{
+        const div = document.createElement('div'); div.className='peer-item panel'; div.style.padding='8px';
+        div.innerHTML = `<div style="flex:1"><div style="font-weight:700">${escapeHtml(c.name)}</div><div class="small">${escapeHtml(c.id)}</div></div>`;
+        const btns = document.createElement('div');
+        const conBtn = document.createElement('button'); conBtn.className='btn'; conBtn.textContent='Connect';
+        conBtn.onclick = ()=>{ peerIdInput.value = c.id; connectBtn.click(); closeModal(m); };
+        const editBtn = document.createElement('button'); editBtn.className='btn'; editBtn.textContent='Edit';
+        editBtn.onclick = ()=>{ const n = prompt('Name', c.name); const id = prompt('Peer ID', c.id); if(n!==null) c.name = n; if(id!==null) c.id = id; contacts[i]=c; saveJSON(LS.contacts, contacts); closeModal(m); openContacts(); };
+        const delBtn = document.createElement('button'); delBtn.className='btn'; delBtn.textContent='Delete';
+        delBtn.onclick = ()=>{ if(confirm('Delete contact?')){ contacts.splice(i,1); saveJSON(LS.contacts, contacts); closeModal(m); openContacts(); } };
+        btns.appendChild(conBtn); btns.appendChild(editBtn); btns.appendChild(delBtn);
+        div.appendChild(btns); box.appendChild(div);
+      });
+      modal.appendChild(box);
+      const foot = document.createElement('div'); foot.style.textAlign='right'; const close = document.createElement('button'); close.className='btn'; close.textContent='Close'; close.onclick = ()=> closeModal(m); foot.appendChild(close); modal.appendChild(foot);
+    }
+    function renderContacts(){
+      // simple rendering into recent panel as quick access
+      // not implemented complex list UI here
+    }
+
+    /* Notifications */
+    enableNotifBtn.addEventListener('click', async ()=>{
+      if(!('Notification' in window)) return alert('Notifications unsupported');
+      const p = await Notification.requestPermission();
+      alert('Notification permission: ' + p);
+    });
+    function notifyUser(title, body){
+      try{ if(Notification && Notification.permission === 'granted') new Notification(title, { body }); }catch(e){ console.warn(e); }
+    }
+
+    /* Utility: load conversation for peer */
+    function loadConversation(peerId){
+      chatWindow.innerHTML = '';
+      const msgs = loadMessages(peerId);
+      msgs.forEach(m => {
+        appendChatMessage({ peerId, who: m.who, text: m.payload || (m.payloadPreview || '(no text)'), type: m.type || 'text', meta: { encrypted: m.encrypted } });
+      });
+    }
+    function appendChatMessage({peerId, who, text, type='text', meta={}}){
+      appendChatMessageDOM({peerId, who, text, type, meta});
+    }
+    function appendChatMessageDOM({peerId, who, text, type, meta}){
+      // wrapper to maintain old calls
+      appendChatMessageDOM_inner({peerId, who, text, type, meta});
+    }
+    function appendChatMessageDOM_inner({peerId, who, text, type, meta}){
+      // For backward compatibility call the UI append function
+      appendChatMessage({peerId, who, text, type, meta}); // earlier defined UI function
+    }
+
+    /* init and load persisted data */
+    function init(){
+      displayName = localStorage.getItem(LS.name) || '';
+      if(!displayName){
+        const name = prompt('Display name'); if(name) { displayName = name; localStorage.setItem(LS.name, displayName); }
+      }
+      displayNameEl.textContent = displayName || '(anonymous)';
+      // load stickers, contacts
+      renderStickers();
+      renderRecent();
+      ensurePeer();
+    }
 
     function renderRecent(){
       const arr = loadJSON(LS.recent) || [];
       recentListEl.innerHTML = '';
-      arr.forEach(it=>{
-        const d = document.createElement('div'); d.className='peer-item';
-        d.innerHTML = `<div>${escapeHtml(it.text)}</div><div class="small">${new Date(it.t).toLocaleString()}</div>`;
-        recentListEl.appendChild(d);
+      arr.slice(0,30).forEach(it=>{
+        const div = document.createElement('div'); div.className='peer-item panel'; div.style.padding='8px';
+        div.innerHTML = `<div>${escapeHtml(it.text)}</div><div class="small">${new Date(it.t).toLocaleString()}</div>`;
+        recentListEl.appendChild(div);
       });
     }
 
-    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    /* Security helpers: showAlert etc already provided */
 
-    // Modal helpers (simple)
+    /* Helpers: createModal and closeModal provided earlier in other examples; implement here */
     function createModal(title){
       const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
       const modal = document.createElement('div'); modal.className='modal';
       const h = document.createElement('h3'); h.textContent = title; modal.appendChild(h);
       backdrop.appendChild(modal);
       document.body.appendChild(backdrop);
-      backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(backdrop); });
+      backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop){ backdrop.remove(); } });
       return backdrop;
     }
-    function closeModal(b){ b && b.parentNode && b.parentNode.removeChild(b); }
+    function closeModal(node){
+      if(!node) return;
+      if(node.parentNode) node.parentNode.removeChild(node);
+    }
 
-    // Address book
-    document.getElementById('open-addrbook').onclick = () => {
-      const m = createModal('連絡帳');
-      const box = document.createElement('div'); box.style.maxHeight='50vh'; box.style.overflow='auto';
-      if(contacts.length===0) box.innerHTML = '<div class="small">連絡先はありません</div>';
-      contacts.forEach((c, idx) => {
-        const row = document.createElement('div'); row.className='peer-item panel';
-        row.style.padding='8px';
-        row.innerHTML = `<div style="flex:1"><div style="font-weight:700">${escapeHtml(c.name)}</div><div class="small">${escapeHtml(c.id)}</div></div>`;
-        const btns = document.createElement('div');
-        const connBtn = document.createElement('button'); connBtn.className='btn'; connBtn.textContent='Connect';
-        connBtn.onclick = () => { peerIdInput.value = c.id; connectBtn.click(); closeModal(m); };
-        const editBtn = document.createElement('button'); editBtn.className='btn'; editBtn.textContent='Edit';
-        editBtn.onclick = () => {
-          const newName = prompt('名前', c.name); if(newName!==null) c.name=newName;
-          const newId = prompt('Peer ID', c.id); if(newId!==null) c.id=newId;
-          contacts[idx]=c; saveJSON(LS.contacts, contacts); closeModal(m); document.getElementById('open-addrbook').click();
-        };
-        const delBtn = document.createElement('button'); delBtn.className='btn'; delBtn.textContent='Delete';
-        delBtn.onclick = ()=>{ if(confirm('削除しますか？')){ contacts.splice(idx,1); saveJSON(LS.contacts, contacts); closeModal(m); document.getElementById('open-addrbook').click(); } };
-        btns.appendChild(connBtn); btns.appendChild(editBtn); btns.appendChild(delBtn);
-        row.appendChild(btns); box.appendChild(row);
-      });
-      m.querySelector('.modal').appendChild(box);
-      const f = document.createElement('div'); f.style.display='flex'; f.style.justifyContent='flex-end'; f.style.marginTop='12px';
-      const close = document.createElement('button'); close.className='btn'; close.textContent='Close'; close.onclick=()=>closeModal(m);
-      f.appendChild(close); m.querySelector('.modal').appendChild(f);
-    };
-
-    document.getElementById('add-contact').onclick = () => {
-      const name = prompt('連絡先の名前'); if(!name) return;
-      const id = prompt('相手の Peer ID'); if(!id) return;
-      contacts.push({name,id}); saveJSON(LS.contacts, contacts); alert('追加しました');
-    };
-
-    // Settings modal (backup/export/import)
-    document.getElementById('open-settings').onclick = () => {
-      const m = createModal('Settings / 設定');
-      const modal = m.querySelector('.modal');
-      const nameRow = document.createElement('div'); nameRow.className='row';
-      nameRow.innerHTML = `<label>Display name</label><input class="field" id="s_name" value="${escapeHtml(displayName)}" />`;
-      const hostRow = document.createElement('div'); hostRow.className='row';
-      hostRow.innerHTML = `<label>Peer host</label><input class="field" id="s_host" value="${escapeHtml(peerCfg.host)}" />`;
-      const portRow = document.createElement('div'); portRow.className='row';
-      portRow.innerHTML = `<label>Peer port</label><input class="field" id="s_port" value="${escapeHtml(peerCfg.port)}" />`;
-      const pathRow = document.createElement('div'); pathRow.className='row';
-      pathRow.innerHTML = `<label>Peer path</label><input class="field" id="s_path" value="${escapeHtml(peerCfg.path)}" />`;
-
-      modal.appendChild(nameRow); modal.appendChild(hostRow); modal.appendChild(portRow); modal.appendChild(pathRow);
-
-      const backupTitle = document.createElement('div'); backupTitle.style.fontWeight='700'; backupTitle.style.marginTop='12px'; backupTitle.textContent='Backup / 復元';
-      modal.appendChild(backupTitle);
-
-      const exportBtn = document.createElement('button'); exportBtn.className='btn btn-primary'; exportBtn.textContent='Export Encrypted Backup';
-      exportBtn.onclick = () => {
-        const pass = prompt('バックアップ暗号化パスフレーズを入力');
-        if(!pass){ alert('キャンセル'); return; }
-        const obj = {
-          displayName,
-          contacts,
-          peerCfg,
-          settings,
-          savedAt: new Date().toISOString()
-        };
-        try{
-          const encrypted = CryptoJS.AES.encrypt(JSON.stringify(obj), pass).toString();
-          const blob = new Blob([encrypted], {type:'text/plain'});
-          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-          a.download = 'p2p-backup-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.enc.txt';
-          a.click(); URL.revokeObjectURL(a.href);
-        } catch(e){ alert('エクスポート失敗: '+e); }
-      };
-
-      const importInput = document.createElement('input'); importInput.type='file'; importInput.accept='text/*'; importInput.style.marginLeft='8px';
-      importInput.onchange = async (ev) => {
-        const f = ev.target.files[0]; if(!f) return;
-        const text = await f.text();
-        const pass = prompt('インポート用パスフレーズを入力');
-        if(!pass) return alert('キャンセル');
-        try{
-          const raw = CryptoJS.AES.decrypt(text, pass).toString(CryptoJS.enc.Utf8);
-          const obj = JSON.parse(raw);
-          if(!confirm('インポートして上書きしますか？')) return;
-          displayName = obj.displayName || displayName;
-          contacts = obj.contacts || contacts;
-          peerCfg = obj.peerCfg || peerCfg;
-          settings = obj.settings || settings;
-          localStorage.setItem(LS.name, displayName);
-          saveJSON(LS.contacts, contacts);
-          saveJSON(LS.peerCfg, peerCfg);
-          saveJSON(LS.settings, settings);
-          refreshHeader();
-          alert('インポート完了');
-          closeModal(m);
-        } catch(e){ alert('インポート失敗（パスフレーズが違うかファイル壊れ）'); }
-      };
-
-      const backupRow = document.createElement('div'); backupRow.style.marginTop='8px';
-      backupRow.appendChild(exportBtn); backupRow.appendChild(importInput);
-      modal.appendChild(backupRow);
-
-      // Clear data
-      const clearBtn = document.createElement('button'); clearBtn.className='btn'; clearBtn.textContent='Clear local data';
-      clearBtn.style.marginTop='12px';
-      clearBtn.onclick = () => {
-        if(!confirm('ローカルデータを消去しますか？')) return;
-        localStorage.clear(); alert('クリアしました。ページを再読み込みします'); location.reload();
-      };
-      modal.appendChild(clearBtn);
-
-      const footer = document.createElement('div'); footer.style.display='flex'; footer.style.justifyContent='flex-end'; footer.style.gap='8px'; footer.style.marginTop='12px';
-      const cancel = document.createElement('button'); cancel.className='btn'; cancel.textContent='Cancel'; cancel.onclick = ()=>closeModal(m);
-      const save = document.createElement('button'); save.className='btn btn-primary'; save.textContent='Save';
-      save.onclick = () => {
-        displayName = document.getElementById('s_name').value.trim();
-        peerCfg.host = document.getElementById('s_host').value.trim() || peerCfg.host;
-        peerCfg.port = Number(document.getElementById('s_port').value) || peerCfg.port;
-        peerCfg.path = document.getElementById('s_path').value.trim() || peerCfg.path;
-        localStorage.setItem(LS.name, displayName);
-        saveJSON(LS.peerCfg, peerCfg);
-        saveJSON(LS.settings, settings);
-        refreshHeader();
-        alert('Saved');
-        closeModal(m);
-        if(peer){ peer.destroy(); peer = null; }
-        initPeer();
-      };
-      footer.appendChild(cancel); footer.appendChild(save); modal.appendChild(footer);
-    };
-
-    // Notifications
-    document.getElementById('enable-notif').onclick = async () => {
-      if(!('Notification' in window)){ alert('通知未対応'); return; }
-      const perm = await Notification.requestPermission(); alert('Notification permission: '+perm);
-    };
-    function showNotification(title, body){
+    // Ensure Peer created and events wired
+    function setupPeerIfNeeded(){
+      if(peer && !peer.destroyed) return;
+      // destroy existing
+      try{ if(peer) peer.destroy(); }catch(e){}
+      const cfg = (settings && settings.peerCfg) ? settings.peerCfg : DEFAULT_PEER_CFG;
       try{
-        if(!('Notification' in window)) return;
-        if(Notification.permission === 'granted'){ const n = new Notification(title, {body, tag:'p2p-chat'}); n.onclick = ()=>{ window.focus(); n.close(); } }
-      }catch(e){ console.warn(e); }
+        peer = new Peer(undefined, { host: cfg.host, port: cfg.port, path: cfg.path, secure: !!cfg.secure });
+        setupPeerEvents(peer);
+        setStatus('Signaling connecting...', 'warn');
+      }catch(e){
+        log('Peer init failed', e);
+        setStatus('Peer init failed', 'bad');
+      }
     }
 
-    // Chat UI helpers
-    function appendMessage({who, text, encrypted=false, time=new Date()}){
-      const row = document.createElement('div'); row.className='msg-row ' + (who==='me' ? 'me' : 'you');
-      if(who==='you'){ const avatar = document.createElement('div'); avatar.className='avatar'; avatar.textContent = 'A'; avatar.style.width='36px'; avatar.style.height='36px'; avatar.style.borderRadius='50%'; avatar.style.display='flex'; avatar.style.alignItems='center'; avatar.style.justifyContent='center'; avatar.style.background='#e6f7ff'; row.appendChild(avatar); } else { const spacer = document.createElement('div'); spacer.style.width='36px'; row.appendChild(spacer); }
-      const bubble = document.createElement('div'); bubble.className='bubble ' + (who==='me' ? 'me' : 'you');
-      bubble.innerHTML = `<div>${escapeHtml(text)}</div>`;
-      const meta = document.createElement('div'); meta.className='small'; meta.style.marginTop='6px'; meta.style.textAlign='right'; meta.textContent = `${new Date(time).toLocaleTimeString()} ${encrypted ? '🔒':''}`;
-      bubble.appendChild(meta); row.appendChild(bubble); chatWindow.appendChild(row); chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    // libs readiness
-    function libsReady(){ if(typeof Peer === 'undefined' || typeof CryptoJS === 'undefined'){ statusEl.textContent = 'Missing libs: PeerJS or CryptoJS'; return false; } return true; }
-
-    function initPeer(){
-      if(!libsReady()) return;
-      try{ peer = new Peer(undefined, peerCfg); }catch(e){ alert('Peer init error: '+e); return; }
-      peer.on('open', id => { myIdEl.textContent = id; statusEl.textContent = 'Ready'; });
-      peer.on('error', err => { console.error(err); statusEl.textContent = 'Peer error: '+err; });
-      peer.on('connection', c => {
-        if(conn && conn.open){ c.on('open', ()=>c.close()); return; }
-        conn = c; bindConn();
+    // Use previous createPeer/ensurePeer functions
+    function setupPeerEvents(p){
+      p.on('open', id => { myIdEl.textContent = id; setStatus('Ready (id: ' + id + ')', 'ok'); log('Peer open', id); });
+      p.on('disconnected', ()=>{ setStatus('Signaling disconnected', 'warn'); log('Peer disconnected'); schedulePeerReconnect(); });
+      p.on('close', ()=>{ setStatus('Signaling closed', 'bad'); log('Peer close'); schedulePeerReconnect(); });
+      p.on('error', err => { setStatus('Peer error', 'bad'); log('Peer error', err); });
+      p.on('connection', c => {
+        log('Incoming connection from', c.peer);
+        if(conn && conn.open){
+          c.on('open', ()=> c.send({ type:'info', msg:'Already connected' }) );
+          return;
+        }
+        conn = c;
+        bindConn();
+      });
+      p.on('call', call => {
+        log('Incoming call from', call.peer);
+        const modal = createModal('Incoming Call');
+        const box = modal.querySelector('.modal');
+        box.innerHTML += '<p>Incoming call from <strong>' + escapeHtml(call.peer) + '</strong></p>';
+        const accept = document.createElement('button'); accept.className='btn btn-primary'; accept.textContent='Accept';
+        const decline = document.createElement('button'); decline.className='btn'; decline.textContent='Decline';
+        box.appendChild(accept); box.appendChild(decline);
+        accept.onclick = async ()=> {
+          closeModal(modal);
+          try{
+            const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+            localStream = s;
+            call.answer(s);
+            bindCall(call);
+          }catch(e){ alert('Microphone access failed: ' + e); }
+        };
+        decline.onclick = ()=> { closeModal(modal); try{ call.close(); }catch(e){} };
       });
     }
 
-    connectBtn.onclick = () => {
-      if(!peer){ alert('Peer not initialized (libs missing?)'); return; }
-      const target = peerIdInput.value.trim(); if(!target) return alert('Peer ID を入力');
-      if(conn && conn.open){ if(!confirm('既に接続中です。切替えますか？')) return; conn.close(); conn = null; }
-      conn = peer.connect(target, { reliable:true });
-      conn.on('open', ()=>{ statusEl.textContent = 'Connected to '+conn.peer; appendMessage({who:'you', text:'(接続完了)', encrypted:false}); });
-      bindConn();
+    function schedulePeerReconnect(){
+      if(reconnectTimer) return;
+      reconnectTimer = setInterval(()=>{
+        log('Attempting reconnect: recreate peer');
+        try{ if(peer) peer.destroy(); }catch(e){}
+        peer = null;
+        setupPeerIfNeeded();
+      }, 5000);
+    }
+
+    // initial boot
+    init();
+
+    // expose some debug
+    window._p2pDebug = {
+      peer, conn, ensurePeer: setupPeerIfNeeded, showAlert, recordDecryptionFailure, recordDecryptionSuccess
     };
 
-    function bindConn(){
-      if(!conn) return;
-      conn.on('data', data => {
-        try{
-          if(data && data.type === 'msg'){
-            addRecent('[from:'+conn.peer+'] '+ (data.preview || '(encrypted)'));
-            appendMessage({who:'you', text:'(encrypted) ' + data.payload, encrypted:true});
-            const pass = passInput.value;
-            if(autoDecryptEl.checked && pass){
-              try{
-                const bytes = CryptoJS.AES.decrypt(data.payload, pass);
-                const plain = bytes.toString(CryptoJS.enc.Utf8);
-                if(plain){ appendMessage({who:'you', text: plain, encrypted:false}); if(document.hidden) showNotification('New message from '+(conn.peer||'peer'), plain); }
-                else { appendMessage({who:'you', text:'(復号に失敗)', encrypted:false}); if(document.hidden) showNotification('Encrypted message', 'Received encrypted message'); }
-              }catch(e){ appendMessage({who:'you', text:'(復号エラー)', encrypted:false}); if(document.hidden) showNotification('Encrypted message','Received encrypted message'); }
-            } else { if(document.hidden) showNotification('Encrypted message','Received encrypted message'); }
-          } else { appendMessage({who:'you', text: JSON.stringify(data), encrypted:false}); }
-        }catch(e){ console.error('data handler', e); }
-      });
-      conn.on('close', ()=>{ statusEl.textContent = 'Connection closed'; appendMessage({who:'you', text:'(切断)', encrypted:false}); });
-      conn.on('error', e => console.error('conn error', e));
-    }
-
-    sendBtn.onclick = () => {
-      if(!conn || !conn.open) return alert('接続がありません');
-      const plain = msgInput.value.trim(); if(!plain) return;
-      const pass = passInput.value; if(!pass) return alert('パスフレーズを入力してください');
-      try{
-        const encrypted = CryptoJS.AES.encrypt(plain, pass).toString();
-        conn.send({ type:'msg', payload: encrypted, preview: plain.slice(0,120) });
-        appendMessage({who:'me', text: plain, encrypted:false, time: Date.now()});
-        msgInput.value = '';
-      }catch(e){ alert('送信失敗: '+e); }
-    };
-
-    msgInput.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
-
-    // Setup flow: if no displayName -> prompt
-    function showSetupIfNeeded(){
-      displayName = localStorage.getItem(LS.name) || '';
-      if(!displayName){
-        const m = createModal('Setup — ユーザー名を決めてください');
-        const modal = m.querySelector('.modal');
-        const label = document.createElement('div'); label.textContent='表示名';
-        const input = document.createElement('input'); input.className='field'; input.placeholder='例: taro';
-        modal.appendChild(label); modal.appendChild(input);
-        const footer = document.createElement('div'); footer.style.display='flex'; footer.style.justifyContent='flex-end'; footer.style.gap='8px'; footer.style.marginTop='12px';
-        const skip = document.createElement('button'); skip.className='btn'; skip.textContent='Skip'; skip.onclick = ()=>{ closeModal(m); initAfterSetup(); };
-        const ok = document.createElement('button'); ok.className='btn btn-primary'; ok.textContent='Save'; ok.onclick = ()=>{ const v = input.value.trim(); if(v){ displayName = v; localStorage.setItem(LS.name, displayName); } closeModal(m); initAfterSetup(); };
-        footer.appendChild(skip); footer.appendChild(ok); modal.appendChild(footer);
-      } else { initAfterSetup(); }
-    }
-
-    function initAfterSetup(){
-      refreshHeader(); renderRecent();
-      // Try init peer if libs are ready
-      if(typeof Peer !== 'undefined' && typeof CryptoJS !== 'undefined') initPeer();
-    }
-
-    function addRecent(text){
-      const arr = loadJSON(LS.recent) || [];
-      arr.unshift({ text, t: Date.now() }); arr.splice(10); saveJSON(LS.recent, arr); renderRecent();
-    }
-
-    // On load
-    window.addEventListener('load', ()=>{ showSetupIfNeeded(); });
-
-    // expose for debug
-    window._p2p = { LS, initPeer, addRecent, openAddressBook:()=>document.getElementById('open-addrbook').click(), openSettings:()=>document.getElementById('open-settings').click() };
+  })();
   </script>
 </body>
 </html>
