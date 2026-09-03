@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>PeerJS Encrypted Chat — LINE-like UI + Notifications</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f2f6f8; --panel:#ffffff; --accent:#00b900; --you-bg:#ffffff; --me-bg:#dcf8c6;
+      --muted:#6b7280; --border:#e6eef2;
+    }
+    html,body{height:100%; margin:0; font-family: "Helvetica Neue", "Segoe UI", Roboto, "Noto Sans JP", Arial; background:var(--bg); color:#0b1220}
+    .app{max-width:900px; margin:18px auto; height:calc(100vh - 36px); display:flex; flex-direction:column; gap:12px}
+    .header{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:linear-gradient(180deg,#fff,#fbfeff); border-radius:10px; box-shadow:0 1px 0 rgba(0,0,0,0.04)}
+    .header .left{display:flex; gap:12px; align-items:center}
+    .logo{width:36px;height:36px;border-radius:8px;background:var(--accent); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:18px}
+    .title{font-size:16px; font-weight:600}
+    .status{font-size:12px;color:var(--muted)}
+    .controls{display:flex; gap:8px; align-items:center}
+    .panel{background:var(--panel); border-radius:12px; padding:8px; border:1px solid var(--border)}
+    .main{flex:1; display:flex; gap:12px; align-items:stretch}
+    .left-col{width:280px; display:flex; flex-direction:column; gap:10px}
+    .right-col{flex:1; display:flex; flex-direction:column; gap:8px}
+    .peer-list{display:flex; flex-direction:column; gap:8px; overflow:auto; max-height:430px}
+    .peer-item{padding:8px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:10px; border:1px solid transparent}
+    .peer-item:hover{background:#f7fbfc}
+    .peer-item.active{border-color:#cfeef6; background:#f3fcff}
+    .peer-id{font-weight:700; font-size:13px}
+    .small{font-size:12px; color:var(--muted)}
+
+    /* Chat area */
+    .chat-wrap{display:flex; flex-direction:column; height:100%}
+    .chat-window{flex:1; overflow:auto; padding:16px; background:linear-gradient(180deg, #f9fdff, #f2f6f8); border-radius:10px; display:flex; flex-direction:column; gap:10px}
+    .msg-row{display:flex; gap:8px; align-items:flex-end}
+    .msg-row.me{justify-content:flex-end; align-items:flex-end}
+    .bubble{max-width:72%; padding:10px 12px; border-radius:18px; box-shadow:0 1px 0 rgba(0,0,0,0.03); position:relative; word-break:break-word}
+    .bubble.you{background:var(--you-bg); color:#0b1220; border:1px solid rgba(0,0,0,0.03); border-bottom-left-radius:4px}
+    .bubble.me{background:var(--me-bg); color:#111; border-bottom-right-radius:4px}
+    .meta{font-size:11px; color:var(--muted); margin-top:6px; text-align:right}
+    .avatar{width:36px;height:36px;border-radius:50%;background:#e6f7ff; display:flex;align-items:center;justify-content:center;font-weight:700;color:#007acc}
+    .input-area{display:flex; gap:8px; padding:10px; align-items:center}
+    .text-input{flex:1; padding:10px 12px; border-radius:20px; border:1px solid var(--border); background:white}
+    .send-btn{background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:999px; cursor:pointer; font-weight:600}
+    .send-btn:disabled{opacity:0.5; cursor:not-allowed}
+    .info{font-size:12px; color:var(--muted); padding:6px 0}
+
+    /* footer */
+    .footer{display:flex; gap:8px; align-items:center; justify-content:space-between; font-size:13px}
+    .notif-btn{background:#fff; border:1px solid var(--border); padding:6px 10px; border-radius:8px; cursor:pointer}
+    .small-note{font-size:12px; color:var(--muted)}
+    @media (max-width:800px){
+      .app{margin:8px}
+      .left-col{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header panel">
+      <div class="left">
+        <div class="logo">P</div>
+        <div>
+          <div class="title">Encrypted P2P Chat</div>
+          <div class="status small" id="status">Not connected</div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="small">Your ID: <span id="my-id" style="font-weight:700">...</span></div>
+        <button id="copy-id" class="notif-btn">Copy</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="left-col panel">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+          <input id="peer-id" placeholder="相手の Peer ID" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border)"/>
+          <button id="connect" class="notif-btn">Connect</button>
+        </div>
+
+        <div style="margin-bottom:6px">
+          <label class="small">Shared passphrase (事前共有)</label>
+          <input id="passphrase" value="secret-passphrase" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border)" />
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+          <button id="enable-notif" class="notif-btn">Enable Notifications</button>
+          <div class="small" style="flex:1">Auto-decrypt incoming: <input id="auto-decrypt" type="checkbox" checked /></div>
+        </div>
+
+        <div class="info small">PeerServer: <span id="peer-server-info">host:9000/path</span></div>
+        <div class="peer-list" id="peer-list" aria-hidden="true">
+          <!-- future: saved peers etc -->
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="chat-wrap panel" style="padding:12px">
+          <div class="chat-window" id="chat-window" aria-live="polite"></div>
+
+          <div class="input-area">
+            <input id="msg" class="text-input" placeholder="メッセージを入力…" />
+            <button id="send" class="send-btn">Send</button>
+          </div>
+
+          <div class="footer">
+            <div class="small-note">Tip: 同じ passphrase を相手と事前共有してください。シグナリング経路は暗号化されないことがあります。</div>
+            <div>
+              <span class="small">PeerJS server port: </span>
+              <span class="small" id="server-port">9000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:10px; border-radius:12px; font-size:13px">
+      <strong>Run / Dev</strong>
+      <div class="small" style="margin-top:6px">
+        1) Signaling server を起動: <code>npx peerjs-server --port 9000 --path /peerjs</code><br/>
+        2) このHTMLをブラウザで開く（同じLAN内で複数端末を使って試す）。<br/>
+        3) ライブラリの読み込み方法: ファイル先頭のコメントを参照。vendor/ に入れるか、このHTML内にライブラリを直接貼ってください。
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       LIBRARIES
+       Option 1 (recommended for single-file): PASTE peerjs.min.js and crypto-js.min.js here,
+       replacing the placeholder comments below.
+
+       Option 2: Put the two files into ./vendor/peerjs.min.js and ./vendor/crypto-js.js
+       and uncomment the two <script src="vendor/..."> lines further down.
+
+       If you want me to paste the exact minified sources into this file, reply "埋め込みして"
+       and I'll return the full file with the libraries embedded.
+       ============================ -->
+
+  <!-- Paste peerjs.min.js here if you want a fully self-contained file -->
+  <script>
+    /* PASTE peerjs.min.js HERE for fully self-contained single-file app */
+  </script>
+
+  <!-- Paste crypto-js bundle (crypto-js.min.js) here if you want a fully self-contained file -->
+  <script>
+    /* PASTE crypto-js.min.js HERE for fully self-contained single-file app */
+  </script>
+
+  <!-- Alternative: use local vendor files in same dir (uncomment these if using vendor files) -->
+  <!-- <script src="vendor/peerjs.min.js"></script>
+  <script src="vendor/crypto-js.js"></script> -->
+
+  <!-- App logic -->
+  <script>
+    // --- Config: change if your PeerServer is elsewhere ---
+    const PEER_CFG = {
+      host: location.hostname,
+      port: 9000,
+      path: '/peerjs',
+      secure: (location.protocol === 'https:')
+    };
+    document.getElementById('peer-server-info').textContent = `${PEER_CFG.host}:${PEER_CFG.port}${PEER_CFG.path}`;
+    document.getElementById('server-port').textContent = PEER_CFG.port;
+
+    // Helper: check libs presence
+    function libsReady(){
+      const missing = [];
+      if (typeof Peer === 'undefined') missing.push('PeerJS');
+      if (typeof CryptoJS === 'undefined') missing.push('CryptoJS');
+      if (missing.length) {
+        console.warn('Missing libs:', missing.join(', '));
+        return false;
+      }
+      return true;
+    }
+
+    // UI helpers
+    const chatWindow = document.getElementById('chat-window');
+    function appendMessage({who, text, encrypted=false, time=new Date()}){
+      const row = document.createElement('div');
+      row.className = 'msg-row ' + (who === 'me' ? 'me' : 'you');
+      // avatar (for 'you' side)
+      if (who === 'you') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = 'A';
+        row.appendChild(avatar);
+      } else {
+        const spacer = document.createElement('div');
+        spacer.style.width = '36px';
+        row.appendChild(spacer);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (who === 'me' ? 'me' : 'you');
+      bubble.innerHTML = `<div>${escapeHtml(text)}</div>`;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = `${time.toLocaleTimeString()} ${encrypted ? '🔒' : ''}`;
+      bubble.appendChild(meta);
+      row.appendChild(bubble);
+
+      // For 'me', put at right visually (row already styled)
+      chatWindow.appendChild(row);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // Notification helpers
+    let notifPermission = Notification && Notification.permission;
+    const enableNotifBtn = document.getElementById('enable-notif');
+    enableNotifBtn.onclick = async () => {
+      if (!('Notification' in window)) { alert('このブラウザは通知に対応していません'); return; }
+      const perm = await Notification.requestPermission();
+      notifPermission = perm;
+      alert('Notification permission: ' + perm);
+    };
+
+    function showNotification(title, body){
+      try {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') {
+          const n = new Notification(title, { body, icon: '', tag: 'p2p-chat' });
+          n.onclick = () => { window.focus(); n.close(); };
+        } else {
+          // optionally prompt
+          console.log('Notification permission not granted:', Notification.permission);
+        }
+      } catch (e) { console.warn('notify err', e); }
+    }
+
+    // small beep for incoming
+    const beepData = "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA..."; // placeholder (not included) - we won't rely on sound
+    function playBeep(){ /* intentionally empty; skip to avoid base64 bulk */ }
+
+    // Peer & connection
+    let peer, conn = null;
+    const myIdEl = document.getElementById('my-id');
+    const statusEl = document.getElementById('status');
+    const copyBtn = document.getElementById('copy-id');
+    copyBtn.onclick = () => {
+      const id = myIdEl.textContent;
+      if (!id || id === '...') return alert('Peer ID がまだ生成されていません');
+      navigator.clipboard?.writeText(id).then(()=> alert('Copied')).catch(()=> alert('コピー失敗'));
+    };
+
+    function initPeer(){
+      if (!libsReady()) {
+        statusEl.textContent = 'Missing libs (paste peerjs & crypto-js)';
+        return;
+      }
+      try {
+        peer = new Peer(undefined, PEER_CFG);
+      } catch (e){
+        statusEl.textContent = 'Peer init error: ' + e;
+        console.error(e);
+        return;
+      }
+      peer.on('open', id => {
+        myIdEl.textContent = id;
+        statusEl.textContent = 'Ready';
+        console.log('peer open', id);
+      });
+      peer.on('error', err => {
+        statusEl.textContent = 'Peer ERROR: ' + err;
+        console.error('Peer error', err);
+      });
+
+      peer.on('connection', c => {
+        console.log('incoming conn', c);
+        if (conn && conn.open) {
+          // only keep one connection for simplicity
+          c.on('open', ()=> c.close());
+          return;
+        }
+        conn = c;
+        setupConn();
+      });
+    }
+
+    // Connect button action
+    document.getElementById('connect').onclick = () => {
+      if (!peer) { alert('Peer not initialized or libs missing'); return; }
+      const target = document.getElementById('peer-id').value.trim();
+      if (!target) { alert('Peer ID を入力してください'); return; }
+      if (conn && conn.open) {
+        if (!confirm('既に接続中です。新しい接続に切り替えますか？')) return;
+        conn.close();
+        conn = null;
+      }
+      conn = peer.connect(target, { reliable:true });
+      conn.on('open', () => {
+        statusEl.textContent = 'Connected to ' + conn.peer;
+        appendMessage({who:'you', text:'(接続完了)', encrypted:false});
+      });
+      conn.on('error', e => console.warn('conn err', e));
+      conn.on('close', () => {
+        statusEl.textContent = 'Connection closed';
+        appendMessage({who:'you', text:'(切断されました)', encrypted:false});
+      });
+      setupConn();
+    };
+
+    function setupConn(){
+      if (!conn) return;
+      conn.on('data', async (data) => {
+        // data expected { type:'msg', payload: encryptedString }
+        try {
+          if (data && data.type === 'msg') {
+            appendMessage({who:'you', text:'(encrypted) ' + data.payload, encrypted:true});
+            // try auto-decrypt
+            const pass = document.getElementById('passphrase').value;
+            if (document.getElementById('auto-decrypt').checked && pass) {
+              try {
+                const bytes = CryptoJS.AES.decrypt(data.payload, pass);
+                const plain = bytes.toString(CryptoJS.enc.Utf8);
+                if (plain) {
+                  appendMessage({who:'you', text: plain, encrypted:false});
+                  if (document.hidden) showNotification('New message', plain);
+                } else {
+                  appendMessage({who:'you', text:'(復号に失敗しました — パスフレーズを確認して下さい)', encrypted:false});
+                  if (document.hidden) showNotification('Encrypted message', 'Received encrypted message');
+                }
+              } catch (e) {
+                appendMessage({who:'you', text:'(復号エラー)', encrypted:false});
+                if (document.hidden) showNotification('Encrypted message', 'Received encrypted message');
+              }
+            } else {
+              // not auto-decrypting
+              if (document.hidden) showNotification('Encrypted message', 'Received encrypted message');
+            }
+          } else {
+            appendMessage({who:'you', text: JSON.stringify(data), encrypted:false});
+            if (document.hidden) showNotification('Data', JSON.stringify(data).slice(0,64));
+          }
+        } catch (e) {
+          console.error('data handler err', e);
+        }
+      });
+    }
+
+    // Send
+    const sendBtn = document.getElementById('send');
+    sendBtn.onclick = () => {
+      if (!conn || !conn.open) return alert('接続がありません');
+      const plain = document.getElementById('msg').value.trim();
+      if (!plain) return;
+      const pass = document.getElementById('passphrase').value;
+      if (!pass) return alert('パスフレーズを入力してください');
+      try {
+        const encrypted = CryptoJS.AES.encrypt(plain, pass).toString();
+        conn.send({ type:'msg', payload: encrypted });
+        appendMessage({who:'me', text: plain, encrypted:false});
+        // Optionally also show encrypted bubble (for debugging)
+        // appendMessage({who:'me', text: encrypted, encrypted:true});
+        document.getElementById('msg').value = '';
+      } catch (e) {
+        alert('Encrypt/send error: ' + e);
+      }
+    };
+
+    // Enter key send
+    document.getElementById('msg').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+    });
+
+    // Init on load
+    window.addEventListener('load', () => {
+      if (libsReady()) {
+        try { initPeer(); } catch(e) { console.error(e); }
+      } else {
+        // libs missing: show notice in status
+        statusEl.textContent = 'ライブラリが埋め込まれていません。ファイル先頭のコメントを参照して peerjs と crypto-js を埋め込んでください。';
+      }
+    });
+
+    // For dev: expose some controls
+    window._p2p = { initPeer, appendMessage };
+  </script>
+
+  <h4 style="text-align:center; margin-top:16px">セキュリティ・注意</h4>
+  <ul style="max-width:900px; margin:0 auto 40px; color:#444">
+    <li>このサンプルは「事前共有パスフレーズ」方式です。パスフレーズが漏れると内容は解読されます。</li>
+    <li>可能なら Web Crypto API + ECDH 鍵合意 + AES-GCM を使った方式を推奨します（必要なら実装します）。</li>
+    <li>本番では必ず HTTPS か WSS を使い、PeerServer（signaling）の TLS 設定を行ってください。</li>
+  </ul>
+</body>
+</html>
