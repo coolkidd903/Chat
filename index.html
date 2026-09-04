@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Redirecting — Secure Chat</title>
+  <meta http-equiv="refresh" content="0;url=./Chat.html?v=2">
+  <script>
+    // Immediate JS redirect with cache-busting timestamp as fallback
+    (function(){
+      const url = './Chat.html?v=' + Date.now();
+      try{ location.replace(url); }catch(e){ window.location.href = url; }
+    })();
+  </script>
+  <style>body{font-family:system-ui,Arial;margin:40px;background:#071022;color:#e6eef8}</style>
+</head>
+<body>
+  <h2>Redirecting to Secure Chat…</h2>
+  <p>If you are not redirected automatically, <a href="./Chat.html">click here</a>.</p>
+</body>
+</html>
