@@ -187,9 +187,9 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
 
 ///// Utilities /////
 const $ = id => document.getElementById(id);
-function log(...a){ const s=a.map(x=> typeof x==='object'?JSON.stringify(x):String(x)).join(' '); const el=$('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${s}\n`; el.scrollTop = el.scrollHeight; console.log(...a); }
+function log(...a){ const s=a.map(x=> typeof x==='object'?JSON.stringify(x):String(x)).join(' '); const el=$('log'); el.textContent += `[`+new Date().toLocaleTimeString()+`] `+s+"\n"; el.scrollTop = el.scrollHeight; console.log(...a); }
 function setStatus(s){ $('status').textContent = s; log('STATUS', s); }
-function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>\"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function generate6Digit(){ return String(Math.floor(100000 + Math.random()*900000)); }
 function generateId(pref='id'){ return pref+'-'+Math.random().toString(36).slice(2,9); }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -531,8 +531,7 @@ function startFallback(){
   const origin = $('fallbackHost').value.trim();
   if(!origin) return alert('フォールバックサーバのURLを入力してください');
   APP.fallback.origin = origin;
-  let wsUrl = origin.replace(/^http/, 'ws');
-  if(origin.startsWith('https:')) wsUrl = origin.replace('https:', 'wss:');
+  let wsUrl = origin.replace(/^http(s)?:/, (m)=> m.startsWith('https') ? 'wss:' : 'ws:');
   APP.fallback.ws = new WebSocket(wsUrl);
   APP.fallback.ws.onopen = ()=> {
     APP.fallback.ready = true;
@@ -543,20 +542,18 @@ function startFallback(){
   APP.fallback.ws.onmessage = ev => {
     try{
       const msg = JSON.parse(ev.data);
-      if(msg.type === 'message'){ // direct message from server
-        handleIncomingRoomMessage(msg.from, msg.payload);
-      } else if(msg.type === 'registered'){ log('registered on fallback', msg.clientId); }
+      if(msg.type === 'message'){ handleIncomingRoomMessage(msg.from, msg.payload); }
+      else if(msg.type === 'registered'){ log('registered on fallback', msg.clientId); }
       else if(msg.type === 'room-members'){ handleServerRoomMessage(msg); }
       else if(msg.type === 'presence' || msg.type === 'room-message'){ handleServerRoomMessage(msg); }
       else if(msg.type === 'queued'){ log('queued msg', msg); }
       else log('fallback msg', msg);
     }catch(e){ log('ws parse err', e); }
   };
-  APP.fallback.ws.onclose = ()=> { APP.fallback.ready=false; setStatus('Fallback closed'); log('fallback closed'); };
+  APP.fallback.ws.onclose = ()=> { APP.fallback.ready=false; setStatus('Fallback closed'); };
   APP.fallback.ws.onerror = e => { log('fallback ws error', e); setStatus('Fallback error'); };
 }
 
-/* Server room message handler */
 function handleServerRoomMessage(msg){
   if(msg.type === 'room-members'){
     // update members
@@ -564,238 +561,6 @@ function handleServerRoomMessage(msg){
     APP.members = new Set(arr.filter(id=> id !== APP.myId));
     renderMemberList();
     // connect to members
-    for(const pid of APP.members) connectToPeer(pid);
-  } else if(msg.type === 'presence'){
-    if(msg.room !== APP.roomId) return;
-    if(msg.action === 'join'){ if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); } }
-    if(msg.action === 'leave'){ APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){} appendSystem(msg.clientId + ' が退室しました'); }
-  } else if(msg.type === 'room-message'){
-    if(msg.room !== APP.roomId) return;
-    // if payload is JSON string and contains type:typing, etc.
-    try{
-      const p = msg.payload;
-      if(typeof p === 'string'){
-        // try parse for structured content from client
-        const maybe = JSON.parse(p);
-        if(maybe && maybe.type === 'typing'){ showTypingIndicator(maybe.value, msg.from); return; }
-      }
-    }catch(e){}
-    handleIncomingRoomMessage(msg.from, msg.payload);
-  }
-}
-
-/* render member UI */
-function renderMemberList(){
-  const ul = $('memberList'); ul.innerHTML='';
-  APP.members.forEach(pid=>{
-    const li = document.createElement('li'); li.className='member';
-    li.innerHTML = `<span>${escapeHtml(pid)}</span><div style="display:flex;gap:6px"><button class="btn" onclick="connectToPeer('${pid}')">接続</button><button class="btn" onclick="pm('${pid}')">PM</button></div>`;
-    ul.appendChild(li);
-  });
-}
-
-/* send PM */
-function pm(peerId){
-  const text = prompt('PM to ' + peerId);
-  if(!text) return;
-  // reuse direct send logic
-  if(APP.connMap.has(peerId)){
-    const dc = APP.connMap.get(peerId);
-    const pass = $('passphrase').value || '';
-    if(APP.ecdhMap && APP.ecdhMap.get(peerId)){ // ideally encryption per session
-      // For simplicity, if ECDH key exists we use AES-GCM on our encryption helper
-      (async ()=>{
-        const key = APP.ecdhMap.get(peerId);
-        const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc });
-      })();
-    } else {
-      const payload = pass ? aesEncryptWithPass(text, pass) : text;
-      dc.send({ type:'msg', payload });
-    }
-    appendChat('me', '(PM) ' + text);
-  } else {
-    alert('相手と直接接続されていません。');
-  }
-}
-
-/* -------------------------
-   Mesh connect helper
-   ------------------------- */
-function connectToPeer(peerId){
-  if(peerId === APP.myId) return;
-  if(APP.connMap.has(peerId)) return;
-  try{
-    const opts = { reliable: !!$('dcReliable').checked, serialization: $('dcSerialization').value };
-    const dc = APP.peer.connect(peerId, opts);
-    bindDataConnection(dc, peerId);
-  }catch(e){ log('connectToPeer err', e); }
-}
-
-/* file chunk send/receive (used in both group and 1:1) */
-const CHUNK_SIZE = 60 * 1024;
-const incomingFiles = {}; // id -> {chunks, total, filename}
-$('attachBtn').addEventListener('click', ()=> $('fileInput').click());
-$('fileInput').addEventListener('change', async (ev)=>{
-  const f = ev.target.files[0]; if(!f) return;
-  // If in room, prefer server upload for group files
-  if(APP.roomId && APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN){
-    try{
-      const res = await uploadToServer(f);
-      // notify room
-      const payload = { type:'file', meta: { fileUrl: APP.fallback.origin + res.url, filename: res.originalName, size: res.size } };
-      // server broadcast
-      APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: JSON.stringify(payload) }));
-      appendChat('me', '(group file) ' + f.name);
-    }catch(e){ log('upload error', e); alert('アップロード失敗'); }
-  } else {
-    // P2P chunk to peers or server fallback
-    const dataUrl = await readFileAsDataURL(f);
-    const payload = $('passphrase').value ? aesEncryptWithPass(dataUrl, $('passphrase').value) : dataUrl;
-    const total = Math.ceil(payload.length / CHUNK_SIZE);
-    const id = generateId('file');
-    // send meta to peers
-    APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'file-meta', id, filename: f.name, total }); }catch(e){} });
-    for(let i=0;i<total;i++){
-      const chunk = payload.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE);
-      APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'file-chunk', id, index:i, data: chunk }); }catch(e){} });
-      await sleep(8);
-    }
-    appendChat('me','(file P2P) ' + f.name);
-  }
-  $('fileInput').value='';
-});
-
-function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(file); }); }
-
-function handleIncomingChunk(fromPeerId, obj){
-  const { id, index, data, filename, total } = obj;
-  incomingFiles[id] = incomingFiles[id] || { chunks: [], total: total || obj.total, filename: filename || obj.filename, ts: Date.now() };
-  incomingFiles[id].chunks[index] = data;
-  const st = incomingFiles[id];
-  if(st.chunks.filter(Boolean).length === st.total){
-    const full = st.chunks.join('');
-    delete incomingFiles[id];
-    const pass = $('passphrase').value || '';
-    if(pass){
-      const dec = aesDecryptWithPass(full, pass);
-      if(dec) appendImage('you', dec);
-      else appendChat('you','(ファイル復号失敗) ' + st.filename);
-    } else appendImage('you', full);
-  }
-}
-
-function appendImage(who, dataUrl){ const el=document.createElement('div'); el.className='msg ' + (who==='me'?'me':'you'); const img=document.createElement('img'); img.src=dataUrl; img.style.maxWidth='360px'; img.style.borderRadius='8px'; el.appendChild(img); const meta=document.createElement('div'); meta.className='msg-meta'; meta.textContent=new Date().toLocaleTimeString(); el.appendChild(meta); $('chatArea').appendChild(el); $('chatArea').scrollTop=$('chatArea').scrollHeight; }
-
-async function uploadToServer(file){
-  if(!APP.fallback.ready) startFallback();
-  await sleep(200);
-  if(!(APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)) throw new Error('fallback not connected');
-  // use fetch to APP.fallback.origin + /upload
-  const fd = new FormData(); fd.append('file', file);
-  const res = await fetch(APP.fallback.origin + '/upload', { method:'POST', body: fd });
-  if(!res.ok) throw new Error('upload failed ' + res.status);
-  return await res.json();
-}
-
-/* -------------------------
-   Call & screen share (same as earlier)
-   ------------------------- */
-
-function attachLocalStream(stream){ APP.localStream=stream; try{ $('localVideo').srcObject = stream; }catch(e){ $('localVideo').src = URL.createObjectURL(stream); } }
-function attachRemoteStream(stream){ try{ $('remoteVideo').srcObject = stream; }catch(e){ $('remoteVideo').src = URL.createObjectURL(stream); } }
-
-$('callBtn').addEventListener('click', async ()=>{
-  const target = $('peerIdInput').value.trim();
-  if(!target && !APP.roomId) return alert('相手IDを入力、またはルームに参加してください');
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({ audio:true, video:true });
-    attachLocalStream(s);
-    if(APP.roomId){
-      // For group call use mesh (inefficient) — better to use SFU; here we call each member
-      APP.members.forEach(pid => {
-        try{ APP.peer.call(pid, s); }catch(e){ appLog('call member err', e); }
-      });
-      appendSystem('ルームメンバーへ発信しました');
-    } else {
-      const call = APP.peer.call(target, s);
-      bindCall(call);
-    }
-  }catch(e){ alert('カメラ/マイク取得失敗: ' + e); }
-});
-
-function bindCall(call){ APP.currentCall = call; call.on('stream', stream => attachRemoteStream(stream)); call.on('close', ()=> teardownCall()); call.on('error', e=> { log('call err', e); teardownCall(); }); }
-function teardownCall(){ try{ if(APP.currentCall) APP.currentCall.close(); }catch(e){} APP.currentCall=null; if(APP.localStream) APP.localStream.getTracks().forEach(t=>t.stop()); APP.localStream=null; if(APP.remoteStream) APP.remoteStream.getTracks().forEach(t=>t.stop()); APP.remoteStream=null; try{ $('localVideo').srcObject = null; $('remoteVideo').srcObject = null; }catch(e){} }
-
-$('hangupBtn').addEventListener('click', ()=> teardownCall());
-
-$('shareScreenBtn').addEventListener('click', async ()=>{
-  try{
-    const s = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false });
-    APP.screenStream = s;
-    if(APP.currentCall && APP.currentCall.peerConnection){
-      const pc = APP.currentCall.peerConnection;
-      const sender = pc.getSenders().find(s=>s.track && s.track.kind==='video');
-      const track = s.getVideoTracks()[0];
-      if(sender && sender.replaceTrack) sender.replaceTrack(track);
-    } else $('localVideo').srcObject = s;
-    s.getVideoTracks()[0].addEventListener('ended', ()=> { appendSystem('画面共有終了'); if(APP.localStream) $('localVideo').srcObject = APP.localStream; APP.screenStream=null; });
-    appendSystem('画面共有開始');
-  }catch(e){ alert('screen share failed: ' + e); }
-});
-
-$('stopShareBtn').addEventListener('click', ()=> { if(APP.screenStream) APP.screenStream.getTracks().forEach(t=>t.stop()); APP.screenStream=null; if(APP.localStream) $('localVideo').srcObject = APP.localStream; });
-
-/* -------------------------
-   ICE diagnostic
-   ------------------------- */
-$('runDiag').addEventListener('click', ()=> runDiagnostic());
-
-async function runDiagnostic(){
-  const out = $('diagOut'); out.textContent = ''; $('diagSummary').textContent='running';
-  setStatus('ICE診断中...');
-  let cfg;
-  try{ cfg = JSON.parse($('rtcConfig').value); }catch(e){ out.textContent = 'rtcConfig JSON parse error'; setStatus('error'); return; }
-  const pc = new RTCPeerConnection(cfg);
-  const found = { host:0, srflx:0, relay:0, other:0 };
-  pc.onicecandidate = e => { if(e.candidate && e.candidate.candidate){ out.textContent += e.candidate.candidate + '\\n'; const line=' '+e.candidate.candidate; if(line.includes(' typ host')) found.host++; else if(line.includes(' typ srflx')) found.srflx++; else if(line.includes(' typ relay')) found.relay++; else found.other++; } };
-  pc.createDataChannel('diag', { reliable:false });
-  try{ const offer = await pc.createOffer(); await pc.setLocalDescription(offer); }catch(e){ out.textContent += 'offer error '+e; }
-  await sleep(3500);
-  out.textContent += '\\nSummary: host:'+found.host+' srflx:'+found.srflx+' relay:'+found.relay+' other:'+found.other+'\\n';
-  $('diagSummary').textContent = `h:${found.host} s:${found.srflx} r:${found.relay}`;
-  setStatus('ICE診断完了');
-  try{ pc.close(); }catch(e){}
-}
-
-/* -------------------------
-   Fallback WebSocket handling tie-in
-   ------------------------- */
-
-function startFallback(){
-  if(APP.fallback.ready) return;
-  const origin = $('fallbackHost').value.trim();
-  if(!origin) return alert('フォールバックサーバを入力してください');
-  APP.fallback.origin = origin;
-  let wsUrl = origin.replace(/^http(s)?:/, (m)=> m.startsWith('https') ? 'wss:' : 'ws:');
-  APP.fallback.ws = new WebSocket(wsUrl);
-  APP.fallback.ws.onopen = ()=> { APP.fallback.ready = true; setStatus('Fallback connected'); APP.fallback.ws.send(JSON.stringify({ type:'register', clientId: APP.myId })); log('fallback connected'); };
-  APP.fallback.ws.onmessage = ev => {
-    try{
-      const msg = JSON.parse(ev.data);
-      if(msg.type === 'message'){ handleIncomingRoomMessage(msg.from, msg.payload); }
-      else if(msg.type === 'room-members' || msg.type==='presence' || msg.type==='room-message') handleServerRoomMessage(msg);
-      else log('fw msg', msg);
-    }catch(e){ log('fallback parse err', e); }
-  };
-  APP.fallback.ws.onclose = ()=> { APP.fallback.ready=false; setStatus('Fallback closed'); };
-  APP.fallback.ws.onerror = e => { log('fallback err', e); setStatus('Fallback error'); };
-}
-
-function handleServerRoomMessage(msg){
-  if(msg.type === 'room-members'){ // initial
-    const members = msg.members || [];
-    APP.members = new Set(members.filter(x=> x !== APP.myId));
-    renderMemberList();
     for(const pid of APP.members) connectToPeer(pid);
   } else if(msg.type === 'presence'){
     if(msg.room !== APP.roomId) return;
