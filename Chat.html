@@ -43,6 +43,11 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
 .member{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px;border:1px solid transparent}
 .member:hover{border-color:rgba(255,255,255,0.02)}
 .kv{font-family:monospace;background:rgba(255,255,255,0.02);padding:6px;border-radius:6px}
+/* modal */
+.modal-backdrop{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center}
+.modal{background:var(--panel);padding:16px;border-radius:12px;max-width:720px;width:90%;max-height:80%;overflow:auto;border:1px solid var(--border)}
+.header-actions{display:flex;gap:8px;align-items:center}
+.hidden{display:none}
 </style>
 
 <!-- libs -->
@@ -53,9 +58,11 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
   <div class="container">
     <header class="panel header">
       <div class="brand"><div class="logo">SC</div><div><div class="title">Secure Chat — Group Edition</div><div class="small muted">P2P first / Server fallback</div></div></div>
-      <div style="text-align:right">
+      <div style="text-align:right" class="header-actions">
         <div id="status" class="small muted">起動中…</div>
         <div id="typing" class="small muted" aria-live="polite"></div>
+        <button id="settingsBtn" class="btn">設定</button>
+        <button id="logoutBtn" class="btn hidden">ログアウト</button>
       </div>
     </header>
 
@@ -96,29 +103,9 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
 
       <hr style="border:none;border-top:1px solid var(--border)" />
 
-      <div>
-        <label class="small">フォールバックサーバ</label>
-        <input id="fallbackHost" placeholder="https://fallback.example.com" />
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="startFallback" class="btn">フォールバック開始</button>
-          <button id="stopFallback" class="btn">フォールバック停止</button>
-        </div>
-      </div>
+      <!-- original settings are accessible via the settings modal. keep minimal placeholder here -->
+      <div id="settingsPlaceholder" class="small muted">詳細設定は「設定」ボタンから開いてください</div>
 
-      <hr style="border:none;border-top:1px solid var(--border)" />
-
-      <div>
-        <label class="small">設定（RTC / DataChannel）</label>
-        <textarea id="rtcConfig" rows="5">{"iceServers":[{"urls":"stun:stun.l.google.com:19302"}],"iceTransportPolicy":"all"}</textarea>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <label><input id="dcReliable" type="checkbox" checked/> reliable</label>
-          <label>serialization <select id="dcSerialization"><option value="binary">binary</option><option value="json">json</option><option value="none">none</option></select></label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="saveRtc" class="btn">保存して再初期化</button>
-          <button id="testIce" class="btn">ICEテスト</button>
-        </div>
-      </div>
     </aside>
 
     <main class="panel center">
@@ -130,6 +117,10 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
         <div style="display:flex;flex-direction:column;gap:8px">
           <div class="video-small"><video id="localVideo" autoplay muted playsinline></video><div style="position:absolute;left:8px;bottom:8px;color:var(--muted)">自分</div></div>
           <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px">
+              <button id="muteAudioBtn" class="btn">マイクOFF</button>
+              <button id="muteVideoBtn" class="btn">カメラOFF</button>
+            </div>
             <button id="callBtn" class="btn">通話</button>
             <button id="hangupBtn" class="btn">切断</button>
             <button id="shareScreenBtn" class="btn">画面共有</button>
@@ -162,6 +153,13 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
       <pre id="diagOut" style="margin-top:8px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;height:220px;overflow:auto"></pre>
 
       <hr style="border:none;border-top:1px solid var(--border)" />
+      <div class="small">通話履歴</div>
+      <ul id="callHistory" class="list" style="margin-top:8px;max-height:160px;overflow:auto"></ul>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="clearCallHistory" class="btn">履歴クリア</button>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border)" />
       <div class="small">ログ</div>
       <pre id="log" style="margin-top:8px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;height:200px;overflow:auto"></pre>
       <div style="display:flex;gap:8px;margin-top:8px">
@@ -171,23 +169,70 @@ video{width:100%;height:100%;object-fit:cover;background:#000}
 
   </div>
 
+  <!-- Settings modal (contains RTC / DataChannel / Fallback settings) -->
+  <div id="settingsModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>設定</h3>
+      <div>
+        <label class="small">フォールバックサーバ</label>
+        <input id="fallbackHost" placeholder="https://fallback.example.com" />
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="startFallback" class="btn">フォールバック開始</button>
+          <button id="stopFallback" class="btn">フォールバック停止</button>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border)" />
+
+      <div>
+        <label class="small">設定（RTC / DataChannel）</label>
+        <textarea id="rtcConfig" rows="5">{"iceServers":[{"urls":"stun:stun.l.google.com:19302"}],"iceTransportPolicy":"all"}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <label><input id="dcReliable" type="checkbox" checked/> reliable</label>
+          <label>serialization <select id="dcSerialization"><option value="binary">binary</option><option value="json">json</option><option value="none">none</option></select></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="saveRtc" class="btn">保存して再初期化</button>
+          <button id="testIce" class="btn">ICEテスト</button>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border)" />
+      <div style="text-align:right;margin-top:12px"><button id="closeSettings" class="primary">閉じる</button></div>
+    </div>
+  </div>
+
+  <!-- Login modal -->
+  <div id="loginModal" class="modal-backdrop" style="display:flex;align-items:center;justify-content:center;">
+    <div class="modal">
+      <h3>ログイン</h3>
+      <p class="small">プロバイダを選択してログインしてください（ダミー実装）</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" id="loginMicrosoft">Microsoft</button>
+        <button class="btn" id="loginGoogle">Google</button>
+        <button class="btn" id="loginApple">Apple</button>
+        <button class="btn" id="signupBtn">サインアップ</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /*
   Secure Chat — Group Edition (single HTML)
-  - Peer ID: 6桁のランダム数字
+  - Peer ID: fixed (per user request)
   - Group: create / join / leave / member list
-  - Mesh P2P for group + server fallback (WebSocket) for relay
+  - Mesh P2P for group + server fallback (WebSocket) for relay (group only)
   - AES-GCM via WebCrypto for session keys (ECDH) per-connection
   - CryptoJS AES as passphrase fallback
   - Typing indicator (入力中)
-  - File send (chunked) with fallback upload
-  - Screen share, call
+  - File send (chunked) with fallback upload (group only)
+  - Screen share, call with mic/cam mute
   - ICE diagnostic
 */
 
 ///// Utilities /////
 const $ = id => document.getElementById(id);
-function log(...a){ const s=a.map(x=> typeof x==='object'?JSON.stringify(x):String(x)).join(' '); const el=$('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${s}\n`; el.scrollTop = el.scrollHeight; console.log(...a); }
+function log(...a){ const s=a.map(x=> typeof x==='object'?JSON.stringify(x):String(x)).join(' '); const el=$('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${s}\n`; el.scrollTop = el.scrollHeight; }
 function setStatus(s){ $('status').textContent = s; log('STATUS', s); }
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function generate6Digit(){ return String(Math.floor(100000 + Math.random()*900000)); }
@@ -233,27 +278,34 @@ function aesEncryptWithPass(plain, pass){ return CryptoJS.AES.encrypt(plain, pas
 function aesDecryptWithPass(cipher, pass){ try{ return CryptoJS.AES.decrypt(cipher, pass).toString(CryptoJS.enc.Utf8) || null; }catch(e){ return null; } }
 
 ///// App state /////
+const FIXED_PEER_ID = '123456'; // fixed per user request
 const APP = {
   peer: null,
-  myId: null, // 6-digit string
-  rtcConfig: JSON.parse($('rtcConfig').value),
-  dataPrefs: { reliable: $('dcReliable').checked, serialization: $('dcSerialization').value },
-  connMap: new Map(), // peerId -> DataConnection (for direct P2P 1:1 or group mesh)
+  myId: FIXED_PEER_ID, // fixed
+  rtcConfig: null,
+  dataPrefs: { reliable: true, serialization: 'binary' },
+  connMap: new Map(), // peerId -> DataConnection
   roomId: null,
   members: new Set(),
   fallback: { origin: '', ws: null, clientId: null, ready:false },
   ecdhMap: new Map(), // peerId -> sessionKey (CryptoKey)
   localStream: null,
   screenStream: null,
-  currentCall: null
+  currentCall: null,
+  callStart: null,
+  callHistory: []
 };
 
-///// Peer setup with 6-digit ID /////
-function createPeerWith6Digit(){
-  const id = generate6Digit();
+// restore call history from localStorage
+try{ const ch = JSON.parse(localStorage.getItem('sc_call_history')||'[]'); APP.callHistory = Array.isArray(ch)?ch:[]; }catch(e){ APP.callHistory = []; }
+
+///// Peer setup with fixed ID /////
+function createPeerWithFixedId(){
+  const id = FIXED_PEER_ID;
   APP.myId = id;
   try{
     if(APP.peer) try{ APP.peer.destroy(); }catch(e){}
+    APP.rtcConfig = APP.rtcConfig || (function(){ try{ return JSON.parse($('rtcConfig').value); }catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'} }})();
     const options = { config: APP.rtcConfig };
     APP.peer = new Peer(id, options);
     APP.peer.on('open', id => {
@@ -264,7 +316,7 @@ function createPeerWith6Digit(){
     });
     APP.peer.on('connection', dc => {
       log('incoming DC from', dc.peer);
-      if(APP.connMap.has(dc.peer)){ // already have, close duplicate
+      if(APP.connMap.has(dc.peer)){
         dc.on('open', ()=> dc.close());
         return;
       }
@@ -277,15 +329,15 @@ function createPeerWith6Digit(){
         attachLocalStream(s);
         call.answer(s);
         bindCall(call);
-      }).catch(e=>{ alert('カメラ/マイク取得失敗: '+e); });
+      }).catch(e=>{ alert('カメラ/マイク取得��敗: '+e); });
     });
     APP.peer.on('error', e=>{ log('peer err', e); setStatus('Peer error'); });
     APP.peer.on('disconnected', ()=> setStatus('Peer disconnected'));
   }catch(e){ log('createPeer error', e); setStatus('Peer create failed'); }
 }
 
-// start
-createPeerWith6Digit();
+// start peer immediately (keeps UI flow simple)
+createPeerWithFixedId();
 
 ///// DataConnection handling (bind, ECDH handshake) /////
 async function performECDHInitiator(dc, peerId){
@@ -294,21 +346,18 @@ async function performECDHInitiator(dc, peerId){
     APP.ecdhLocal = APP.ecdhLocal || {};
     APP.ecdhLocal[peerId] = kp;
     const jwk = await XCHG.exportPublic(kp.publicKey);
-    dc.send({ type:'ecdh-pub', jwk });
-    // wait for peer jwk handled in data message (handleIncomingData)
+    if(dc && dc.open) dc.send({ type:'ecdh-pub', jwk });
   }catch(e){ log('ecdh initiator err', e); }
 }
 
 async function handleECDHPublic(peerId, jwk){
   try{
-    // if we already have local pair then derive, else generate pair and send ours
     let kp = APP.ecdhLocal && APP.ecdhLocal[peerId];
     if(!kp){
       kp = await XCHG.generateKeyPair();
       APP.ecdhLocal = APP.ecdhLocal || {};
       APP.ecdhLocal[peerId] = kp;
       const myJwk = await XCHG.exportPublic(kp.publicKey);
-      // send our public to peer via existing connection
       const dc = APP.connMap.get(peerId);
       if(dc && dc.open) dc.send({ type:'ecdh-pub', jwk: myJwk });
     }
@@ -323,23 +372,19 @@ function bindDataConnection(dc, peerId){
   APP.connMap.set(peerId, dc);
   dc.on('open', ()=> {
     log('DC open to', peerId);
-    // start ECDH handshake
     performECDHInitiator(dc, peerId);
     setStatus('DataChannel open: ' + peerId);
   });
   dc.on('data', async (data) => {
-    // handle structured messages
     try{
       if(data.type === 'ecdh-pub'){ await handleECDHPublic(peerId, data.jwk); return; }
       if(data.type === 'msg'){
-        // if sessionKey exists for peer, decrypt AES-GCM
         const key = APP.ecdhMap.get(peerId);
         if(key && data.payload && data.payload.iv && data.payload.ct){
           const plain = await XCHG.aesGcmDecrypt(key, data.payload.iv, data.payload.ct);
           appendChat('you', '['+peerId+'] '+(plain||'(復号失敗)'));
         } else {
-          // try passphrase decrypt
-          const pass = $('passphrase').value || '';
+          const pass = $('passphrase')? $('passphrase').value || '': '';
           if(pass){ const dec = aesDecryptWithPass(data.payload, pass); appendChat('you','['+peerId+'] '+(dec||'(復号失敗)')); }
           else appendChat('you','['+peerId+'] '+data.payload);
         }
@@ -347,7 +392,7 @@ function bindDataConnection(dc, peerId){
       }
       if(data.type === 'typing'){ showTypingIndicator(true, peerId); return; }
       if(data.type === 'file-chunk'){ handleIncomingChunk(peerId, data); return; }
-      if(data.type === 'room-forward'){ // peer forwarding group message
+      if(data.type === 'room-forward'){
         handleIncomingRoomMessage(peerId, data.payload); return;
       }
       log('unknown dc data', data);
@@ -361,7 +406,7 @@ function bindDataConnection(dc, peerId){
    Group (room) functions
    ------------------------- */
 
-function generateRoomId(){ // 6-digit room id for simplicity
+function generateRoomId(){
   return String(Math.floor(100000 + Math.random()*900000));
 }
 
@@ -381,35 +426,33 @@ $('joinGroupBtn').addEventListener('click', ()=> {
 });
 
 async function joinRoom(roomId){
-  // ensure fallback available to manage membership
-  if(!APP.fallback.ready) startFallback(); await sleep(300);
+  // join room via fallback server (group relay). Ensure fallback started.
+  if(!(APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)){
+    startFallback(); await sleep(300);
+  }
   if(!(APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)){
     alert('フォールバックサーバに接続できません。フォールバックを開始してください。');
     return;
   }
   APP.roomId = roomId;
   $('currentRoom').textContent = roomId;
-  // join on server
   APP.fallback.ws.send(JSON.stringify({ type:'join-room', room: roomId }));
   log('join sent to server for room', roomId);
 }
 
-// Server message handler integration: when messages arrive from server, we handle room-members/presence/room-message
+// Server message handler integration
 function handleServerMessage(msg){
-  if(msg.type === 'room-members'){ // initial member list
+  if(msg.type === 'room-members'){
     const members = msg.members || [];
     APP.members = new Set(members.filter(id=> id !== APP.myId));
     renderMemberList();
-    // connect to each member (mesh)
     for(const pid of APP.members) connectToPeer(pid);
   } else if(msg.type === 'presence'){
     if(msg.room !== APP.roomId) return;
     if(msg.action === 'join'){
       if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); }
     } else if(msg.action === 'leave'){
-      APP.members.delete(msg.clientId); renderMemberList();
-      // close DC if exists
-      const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){};
+      APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){};
       appendSystem(msg.clientId + ' が退出しました');
     }
   } else if(msg.type === 'room-message'){
@@ -423,7 +466,7 @@ function renderMemberList(){
   const ul = $('memberList'); ul.innerHTML = '';
   APP.members.forEach(pid=>{
     const li = document.createElement('li'); li.className='member';
-    li.innerHTML = `<span>${escapeHtml(pid)}</span><div style="display:flex;gap:6px"><button class="btn" data-peer="${pid}" onclick="connectToPeer('${pid}')">接続</button><button class="btn" onclick="pm('${pid}')">PM</button></div>`;
+    li.innerHTML = `<span>${escapeHtml(pid)}</span><div style="display:flex;gap:6px"><button class="btn" onclick="connectToPeer('${pid}')">接続</button><button class="btn" onclick="pm('${pid}')">PM</button></div>`;
     ul.appendChild(li);
   });
 }
@@ -442,12 +485,8 @@ function connectToPeer(peerId){
 /* Send group message: broadcast to all connected DCs and also send to server as room-message for relay */
 async function sendGroupMessage(text){
   if(!APP.roomId) { alert('先にルームに参加してください'); return; }
-  // prepare encrypted payload string
-  // We'll encrypt per-connection with ECDH if available, but for server broadcast we send same string (encrypted with passphrase or session if global)
-  // Simpler: for group, encrypt with passphrase (shared room passphrase) if not implementing group key exchange
-  const pass = $('passphrase').value || '';
-  let payloadStr;
-  if(pass){ payloadStr = aesEncryptWithPass(text, pass); } else { payloadStr = text; }
+  const pass = $('passphrase')? $('passphrase').value || '': '';
+  let payloadStr = pass? aesEncryptWithPass(text, pass) : text;
   // send to mesh peers
   APP.connMap.forEach((dc, pid)=>{
     try{ dc.send({ type:'room-forward', payload: payloadStr }); }catch(e){ log('mesh send err', e); }
@@ -461,13 +500,11 @@ async function sendGroupMessage(text){
 
 /* handle incoming room message (from server or forwarded peer) */
 function handleIncomingRoomMessage(from, payload){
-  // decrypt with passphrase if present
-  const pass = $('passphrase').value || '';
+  const pass = $('passphrase')? $('passphrase').value || '': '';
   if(pass){
     const dec = aesDecryptWithPass(payload, pass);
     if(dec !== null){ appendChat('you', '['+from+'] '+dec); return; }
   }
-  // else assume plain
   appendChat('you', '['+from+'] '+payload);
 }
 
@@ -476,30 +513,20 @@ $('sendBtn').addEventListener('click', async ()=>{
   const text = $('msgInput').value.trim(); if(!text) return;
   if(APP.roomId) await sendGroupMessage(text);
   else {
-    // send to peerIdInput if connected
     const target = $('peerIdInput').value.trim();
     if(!target) return alert('相手IDを入力してくださいか、グループに参加してください');
-    // try p2p direct
     if(APP.connMap.has(target)){
       const dc = APP.connMap.get(target);
-      // encrypt with per-peer sessionKey if any
       const key = APP.ecdhMap && APP.ecdhMap.get(target);
       if(key){ const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc }); appendChat('me', text); }
       else {
-        const pass = $('passphrase').value || '';
+        const pass = $('passphrase')? $('passphrase').value || '': '';
         const payload = pass ? aesEncryptWithPass(text, pass) : text;
         dc.send({ type:'msg', payload }); appendChat('me', text);
       }
     } else {
-      // fallback via server send to single peer
-      if(!APP.fallback.ready) startFallback();
-      await sleep(300);
-      if(APP.fallback.ws && APP.fallback.ws.readyState === WebSocket.OPEN){
-        const pass = $('passphrase').value || '';
-        const payload = pass ? aesEncryptWithPass(text, pass) : text;
-        APP.fallback.ws.send(JSON.stringify({ type:'send', to: target, payload }));
-        appendChat('me', text + ' (via server)');
-      } else alert('接続経路がありません');
+      // Per request: fallback only for group chats. for 1:1, require peer connection.
+      alert('相手と直接接続されていません。2人チャットは P2P を使います。相手の Peer ID を確認して接続してください。');
     }
   }
   $('msgInput').value = '';
@@ -514,9 +541,7 @@ $('msgInput').addEventListener('input', ()=>{
 });
 function notifyTyping(flag){
   $('typing').textContent = flag ? '入力中…' : '';
-  // send to peers
   APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'typing', value:flag }); }catch(e){} });
-  // to server in room
   if(APP.roomId && APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN){
     APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: JSON.stringify({ type:'typing', from: APP.myId, value: flag }) }));
   }
@@ -543,7 +568,7 @@ function startFallback(){
   APP.fallback.ws.onmessage = ev => {
     try{
       const msg = JSON.parse(ev.data);
-      if(msg.type === 'message'){ // direct message from server
+      if(msg.type === 'message'){
         handleIncomingRoomMessage(msg.from, msg.payload);
       } else if(msg.type === 'registered'){ log('registered on fallback', msg.clientId); }
       else if(msg.type === 'room-members'){ handleServerRoomMessage(msg); }
@@ -559,23 +584,19 @@ function startFallback(){
 /* Server room message handler */
 function handleServerRoomMessage(msg){
   if(msg.type === 'room-members'){
-    // update members
     const arr = msg.members || [];
     APP.members = new Set(arr.filter(id=> id !== APP.myId));
     renderMemberList();
-    // connect to members
     for(const pid of APP.members) connectToPeer(pid);
   } else if(msg.type === 'presence'){
     if(msg.room !== APP.roomId) return;
     if(msg.action === 'join'){ if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); } }
-    if(msg.action === 'leave'){ APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){} appendSystem(msg.clientId + ' が退室しました'); }
+    if(msg.action === 'leave'){ APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){} appendSystem(msg.clientId + ' が退出しました'); }
   } else if(msg.type === 'room-message'){
     if(msg.room !== APP.roomId) return;
-    // if payload is JSON string and contains type:typing, etc.
     try{
       const p = msg.payload;
       if(typeof p === 'string'){
-        // try parse for structured content from client
         const maybe = JSON.parse(p);
         if(maybe && maybe.type === 'typing'){ showTypingIndicator(maybe.value, msg.from); return; }
       }
@@ -584,7 +605,7 @@ function handleServerRoomMessage(msg){
   }
 }
 
-/* render member UI */
+/* render member UI (duplicate safe) */
 function renderMemberList(){
   const ul = $('memberList'); ul.innerHTML='';
   APP.members.forEach(pid=>{
@@ -598,38 +619,25 @@ function renderMemberList(){
 function pm(peerId){
   const text = prompt('PM to ' + peerId);
   if(!text) return;
-  // reuse direct send logic
   if(APP.connMap.has(peerId)){
     const dc = APP.connMap.get(peerId);
-    const pass = $('passphrase').value || '';
-    if(APP.ecdhMap && APP.ecdhMap.get(peerId)){ // ideally encryption per session
-      // For simplicity, if ECDH key exists we use AES-GCM on our encryption helper
-      (async ()=>{
-        const key = APP.ecdhMap.get(peerId);
-        const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc });
-      })();
+    const pass = $('passphrase')? $('passphrase').value || '': '';
+    if(APP.ecdhMap && APP.ecdhMap.get(peerId)){
+      (async ()=>{ const key = APP.ecdhMap.get(peerId); const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc }); })();
     } else {
       const payload = pass ? aesEncryptWithPass(text, pass) : text;
       dc.send({ type:'msg', payload });
     }
     appendChat('me', '(PM) ' + text);
   } else {
-    alert('相手と直接接続されていません。');
+    alert('相手と直接接続されていません。2人チャットはP2Pを使用するため、相手のPeer IDを確認して接続してください。');
   }
 }
 
 /* -------------------------
    Mesh connect helper
    ------------------------- */
-function connectToPeer(peerId){
-  if(peerId === APP.myId) return;
-  if(APP.connMap.has(peerId)) return;
-  try{
-    const opts = { reliable: !!$('dcReliable').checked, serialization: $('dcSerialization').value };
-    const dc = APP.peer.connect(peerId, opts);
-    bindDataConnection(dc, peerId);
-  }catch(e){ log('connectToPeer err', e); }
-}
+// connectToPeer already defined above
 
 /* file chunk send/receive (used in both group and 1:1) */
 const CHUNK_SIZE = 60 * 1024;
@@ -637,23 +645,21 @@ const incomingFiles = {}; // id -> {chunks, total, filename}
 $('attachBtn').addEventListener('click', ()=> $('fileInput').click());
 $('fileInput').addEventListener('change', async (ev)=>{
   const f = ev.target.files[0]; if(!f) return;
-  // If in room, prefer server upload for group files
-  if(APP.roomId && APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN){
+  if(APP.roomId){
+    // group: use server upload for group files
     try{
       const res = await uploadToServer(f);
-      // notify room
       const payload = { type:'file', meta: { fileUrl: APP.fallback.origin + res.url, filename: res.originalName, size: res.size } };
-      // server broadcast
       APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: JSON.stringify(payload) }));
       appendChat('me', '(group file) ' + f.name);
     }catch(e){ log('upload error', e); alert('アップロード失敗'); }
   } else {
-    // P2P chunk to peers or server fallback
+    // P2P chunk to peers
+    if(APP.connMap.size === 0){ alert('相手と接続されていません。ファイル送信はP2Pで行われます。'); $('fileInput').value=''; return; }
     const dataUrl = await readFileAsDataURL(f);
-    const payload = $('passphrase').value ? aesEncryptWithPass(dataUrl, $('passphrase').value) : dataUrl;
+    const payload = $('passphrase') && $('passphrase').value ? aesEncryptWithPass(dataUrl, $('passphrase').value) : dataUrl;
     const total = Math.ceil(payload.length / CHUNK_SIZE);
     const id = generateId('file');
-    // send meta to peers
     APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'file-meta', id, filename: f.name, total }); }catch(e){} });
     for(let i=0;i<total;i++){
       const chunk = payload.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE);
@@ -675,7 +681,7 @@ function handleIncomingChunk(fromPeerId, obj){
   if(st.chunks.filter(Boolean).length === st.total){
     const full = st.chunks.join('');
     delete incomingFiles[id];
-    const pass = $('passphrase').value || '';
+    const pass = $('passphrase')? $('passphrase').value || '': '';
     if(pass){
       const dec = aesDecryptWithPass(full, pass);
       if(dec) appendImage('you', dec);
@@ -684,13 +690,12 @@ function handleIncomingChunk(fromPeerId, obj){
   }
 }
 
-function appendImage(who, dataUrl){ const el=document.createElement('div'); el.className='msg ' + (who==='me'?'me':'you'); const img=document.createElement('img'); img.src=dataUrl; img.style.maxWidth='360px'; img.style.borderRadius='8px'; el.appendChild(img); const meta=document.createElement('div'); meta.className='msg-meta'; meta.textContent=new Date().toLocaleTimeString(); el.appendChild(meta); $('chatArea').appendChild(el); $('chatArea').scrollTop=$('chatArea').scrollHeight; }
+function appendImage(who, dataUrl){ const el=document.createElement('div'); el.className='msg ' + (who==='me'?'me':'you'); const img=document.createElement('img'); img.src=dataUrl; img.style.maxWidth='220px'; img.style.borderRadius='8px'; el.appendChild(img); const meta=document.createElement('div'); meta.className='msg-meta'; meta.textContent=new Date().toLocaleTimeString(); el.appendChild(meta); $('chatArea').appendChild(el); $('chatArea').scrollTop = $('chatArea').scrollHeight; }
 
 async function uploadToServer(file){
   if(!APP.fallback.ready) startFallback();
   await sleep(200);
   if(!(APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)) throw new Error('fallback not connected');
-  // use fetch to APP.fallback.origin + /upload
   const fd = new FormData(); fd.append('file', file);
   const res = await fetch(APP.fallback.origin + '/upload', { method:'POST', body: fd });
   if(!res.ok) throw new Error('upload failed ' + res.status);
@@ -698,7 +703,7 @@ async function uploadToServer(file){
 }
 
 /* -------------------------
-   Call & screen share (same as earlier)
+   Call & screen share (same as earlier) with mic/cam toggles
    ------------------------- */
 
 function attachLocalStream(stream){ APP.localStream=stream; try{ $('localVideo').srcObject = stream; }catch(e){ $('localVideo').src = URL.createObjectURL(stream); } }
@@ -710,11 +715,10 @@ $('callBtn').addEventListener('click', async ()=>{
   try{
     const s = await navigator.mediaDevices.getUserMedia({ audio:true, video:true });
     attachLocalStream(s);
+    // record call start
+    APP.callStart = { target: target || APP.roomId || 'room', start: Date.now() };
     if(APP.roomId){
-      // For group call use mesh (inefficient) — better to use SFU; here we call each member
-      APP.members.forEach(pid => {
-        try{ APP.peer.call(pid, s); }catch(e){ appLog('call member err', e); }
-      });
+      APP.members.forEach(pid => { try{ APP.peer.call(pid, s); }catch(e){ log('call member err', e); } });
       appendSystem('ルームメンバーへ発信しました');
     } else {
       const call = APP.peer.call(target, s);
@@ -723,8 +727,34 @@ $('callBtn').addEventListener('click', async ()=>{
   }catch(e){ alert('カメラ/マイク取得失敗: ' + e); }
 });
 
-function bindCall(call){ APP.currentCall = call; call.on('stream', stream => attachRemoteStream(stream)); call.on('close', ()=> teardownCall()); call.on('error', e=> { log('call err', e); teardownCall(); }); }
-function teardownCall(){ try{ if(APP.currentCall) APP.currentCall.close(); }catch(e){} APP.currentCall=null; if(APP.localStream) APP.localStream.getTracks().forEach(t=>t.stop()); APP.localStream=null; if(APP.remoteStream) APP.remoteStream.getTracks().forEach(t=>t.stop()); APP.remoteStream=null; try{ $('localVideo').srcObject = null; $('remoteVideo').srcObject = null; }catch(e){} }
+function bindCall(call){
+  APP.currentCall = call;
+  try{ call.on('stream', stream => attachRemoteStream(stream)); }catch(e){}
+  try{ call.on('close', ()=> teardownCall()); }catch(e){}
+  try{ call.on('error', e=> { log('call err', e); teardownCall(); }); }catch(e){}
+}
+
+function formatDuration(ms){
+  const s = Math.floor(ms/1000); const m = Math.floor(s/60); const ss = s%60; return m+':'+String(ss).padStart(2,'0');
+}
+
+function teardownCall(){
+  try{ if(APP.currentCall) APP.currentCall.close(); }catch(e){}
+  // stop local stream tracks
+  if(APP.localStream) APP.localStream.getTracks().forEach(t=>t.stop());
+  APP.localStream = null;
+  APP.currentCall = null;
+  // record call end
+  if(APP.callStart){
+    const end = Date.now(); const dur = end - APP.callStart.start;
+    const entry = { target: APP.callStart.target, start: new Date(APP.callStart.start).toISOString(), durationMs: dur };
+    APP.callHistory.unshift(entry);
+    if(APP.callHistory.length>100) APP.callHistory.length = 100;
+    localStorage.setItem('sc_call_history', JSON.stringify(APP.callHistory));
+    renderCallHistory();
+    APP.callStart = null;
+  }
+}
 
 $('hangupBtn').addEventListener('click', ()=> teardownCall());
 
@@ -745,6 +775,23 @@ $('shareScreenBtn').addEventListener('click', async ()=>{
 
 $('stopShareBtn').addEventListener('click', ()=> { if(APP.screenStream) APP.screenStream.getTracks().forEach(t=>t.stop()); APP.screenStream=null; if(APP.localStream) $('localVideo').srcObject = APP.localStream; });
 
+// mic / cam toggle
+$('muteAudioBtn').addEventListener('click', ()=>{
+  if(!APP.localStream){ alert('ローカルストリームがあ��ません'); return; }
+  const audioTracks = APP.localStream.getAudioTracks();
+  if(!audioTracks || audioTracks.length===0){ alert('オーディオトラックが見つかりません'); return; }
+  audioTracks.forEach(t=> t.enabled = !t.enabled);
+  $('muteAudioBtn').textContent = audioTracks[0].enabled? 'マイクOFF' : 'マイクON';
+});
+
+$('muteVideoBtn').addEventListener('click', ()=>{
+  if(!APP.localStream){ alert('ローカルストリームがありません'); return; }
+  const videoTracks = APP.localStream.getVideoTracks();
+  if(!videoTracks || videoTracks.length===0){ alert('ビデオトラックが見つかりません'); return; }
+  videoTracks.forEach(t=> t.enabled = !t.enabled);
+  $('muteVideoBtn').textContent = videoTracks[0].enabled? 'カメラOFF' : 'カメラON';
+});
+
 /* -------------------------
    ICE diagnostic
    ------------------------- */
@@ -757,11 +804,11 @@ async function runDiagnostic(){
   try{ cfg = JSON.parse($('rtcConfig').value); }catch(e){ out.textContent = 'rtcConfig JSON parse error'; setStatus('error'); return; }
   const pc = new RTCPeerConnection(cfg);
   const found = { host:0, srflx:0, relay:0, other:0 };
-  pc.onicecandidate = e => { if(e.candidate && e.candidate.candidate){ out.textContent += e.candidate.candidate + '\\n'; const line=' '+e.candidate.candidate; if(line.includes(' typ host')) found.host++; else if(line.includes(' typ srflx')) found.srflx++; else if(line.includes(' typ relay')) found.relay++; else found.other++; } };
+  pc.onicecandidate = e => { if(e.candidate && e.candidate.candidate){ out.textContent += e.candidate.candidate + '\n'; const line=' '+e.candidate.candidate; if(line.includes(' typ host')) found.host++; else if(line.includes('typ srflx')) found.srflx++; else if(line.includes('typ relay')) found.relay++; else found.other++; } };
   pc.createDataChannel('diag', { reliable:false });
   try{ const offer = await pc.createOffer(); await pc.setLocalDescription(offer); }catch(e){ out.textContent += 'offer error '+e; }
   await sleep(3500);
-  out.textContent += '\\nSummary: host:'+found.host+' srflx:'+found.srflx+' relay:'+found.relay+' other:'+found.other+'\\n';
+  out.textContent += '\nSummary: host:'+found.host+' srflx:'+found.srflx+' relay:'+found.relay+' other:'+found.other+'\n';
   $('diagSummary').textContent = `h:${found.host} s:${found.srflx} r:${found.relay}`;
   setStatus('ICE診断完了');
   try{ pc.close(); }catch(e){}
@@ -770,60 +817,57 @@ async function runDiagnostic(){
 /* -------------------------
    Fallback WebSocket handling tie-in
    ------------------------- */
-
-function startFallback(){
-  if(APP.fallback.ready) return;
-  const origin = $('fallbackHost').value.trim();
-  if(!origin) return alert('フォールバックサーバを入力してください');
-  APP.fallback.origin = origin;
-  let wsUrl = origin.replace(/^http(s)?:/, (m)=> m.startsWith('https') ? 'wss:' : 'ws:');
-  APP.fallback.ws = new WebSocket(wsUrl);
-  APP.fallback.ws.onopen = ()=> { APP.fallback.ready = true; setStatus('Fallback connected'); APP.fallback.ws.send(JSON.stringify({ type:'register', clientId: APP.myId })); log('fallback connected'); };
-  APP.fallback.ws.onmessage = ev => {
-    try{
-      const msg = JSON.parse(ev.data);
-      if(msg.type === 'message'){ handleIncomingRoomMessage(msg.from, msg.payload); }
-      else if(msg.type === 'room-members' || msg.type==='presence' || msg.type==='room-message') handleServerRoomMessage(msg);
-      else log('fw msg', msg);
-    }catch(e){ log('fallback parse err', e); }
-  };
-  APP.fallback.ws.onclose = ()=> { APP.fallback.ready=false; setStatus('Fallback closed'); };
-  APP.fallback.ws.onerror = e => { log('fallback err', e); setStatus('Fallback error'); };
-}
-
-function handleServerRoomMessage(msg){
-  if(msg.type === 'room-members'){ // initial
-    const members = msg.members || [];
-    APP.members = new Set(members.filter(x=> x !== APP.myId));
-    renderMemberList();
-    for(const pid of APP.members) connectToPeer(pid);
-  } else if(msg.type === 'presence'){
-    if(msg.room !== APP.roomId) return;
-    if(msg.action === 'join'){ if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); } }
-    if(msg.action === 'leave'){ APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){} appendSystem(msg.clientId + ' が退室しました'); }
-  } else if(msg.type === 'room-message'){
-    if(msg.room !== APP.roomId) return;
-    handleIncomingRoomMessage(msg.from, msg.payload);
-  }
-}
+// startFallback defined above
 
 /* -------------------------
    small helpers
    ------------------------- */
 function appendChat(who, text){
-  const el = document.createElement('div'); el.className = 'msg ' + (who==='me' ? 'me' : 'you'); el.innerHTML = '<div>' + escapeHtml(text) + '</div><div class="msg-meta">' + new Date().toLocaleTimeString() + '</div>'; $('chatArea').appendChild(el); $('chatArea').scrollTop = $('chatArea').scrollHeight;
+  const el = document.createElement('div'); el.className = 'msg ' + (who==='me' ? 'me' : 'you'); el.innerHTML = '<div>' + escapeHtml(text) + '</div><div class="msg-meta">' + new Date().toLocaleTimeString() + '</div>';
+  $('chatArea').appendChild(el); $('chatArea').scrollTop = $('chatArea').scrollHeight;
 }
 function appendSystem(text){ const el=document.createElement('div'); el.className='msg you'; el.style.opacity=0.6; el.innerHTML='<div><em>'+escapeHtml(text)+'</em></div>'; $('chatArea').appendChild(el); $('chatArea').scrollTop=$('chatArea').scrollHeight; }
 
 /* export logs */
 $('exportLogs').addEventListener('click', ()=> {
-  const blob = new Blob([$('log').textContent], { type:'text/plain' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sc-logs-'+Date.now()+'.txt'; a.click(); URL.revokeObjectURL(a.href);
+  const blob = new Blob([$('log').textContent], { type:'text/plain' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sc-logs-'+Date.now()+'.txt'; a.click(); setStatus('ログ出力');
 });
 
 /* Initial UI: set myId shown */
 $('myId').textContent = 'ID: ' + APP.myId;
+// hide regenerate id as peer id is fixed
+try{ $('regenerateId').style.display='none'; }catch(e){}
 
-/* React to fallback server registration messages: integrate handler earlier when ws receives room events */
+/* Call history rendering */
+function renderCallHistory(){
+  const ul = $('callHistory'); ul.innerHTML='';
+  APP.callHistory.forEach(entry=>{
+    const li = document.createElement('li'); li.className='member';
+    li.innerHTML = `<div>${escapeHtml(String(entry.target))} <div class="small muted">${new Date(entry.start).toLocaleString()} (${formatDuration(entry.durationMs)})</div></div>`;
+    ul.appendChild(li);
+  });
+}
+renderCallHistory();
+$('clearCallHistory').addEventListener('click', ()=>{ APP.callHistory=[]; localStorage.removeItem('sc_call_history'); renderCallHistory(); });
+
+/* Settings modal handlers */
+$('settingsBtn').addEventListener('click', ()=>{ $('settingsModal').style.display='flex'; });
+$('closeSettings').addEventListener('click', ()=>{ $('settingsModal').style.display='none'; });
+$('startFallback').addEventListener('click', ()=> startFallback());
+$('stopFallback').addEventListener('click', ()=> { if(APP.fallback.ws) APP.fallback.ws.close(); });
+$('saveRtc').addEventListener('click', ()=>{ try{ APP.rtcConfig = JSON.parse($('rtcConfig').value); setStatus('RTC設定を更新しました'); createPeerWithFixedId(); }catch(e){ alert('RTC設定 JSON エラー: '+e); } });
+
+// login modal (dummy)
+function doLogin(provider){ const name = provider + '-' + Math.floor(Math.random()*9000+1000); $('displayName').textContent = name; $('loginModal').style.display='none'; document.getElementById('logoutBtn').classList.remove('hidden'); }
+$('loginMicrosoft').addEventListener('click', ()=> doLogin('Microsoft'));
+$('loginGoogle').addEventListener('click', ()=> doLogin('Google'));
+$('loginApple').addEventListener('click', ()=> doLogin('Apple'));
+$('signupBtn').addEventListener('click', ()=> doLogin('Signup'));
+$('logoutBtn').addEventListener('click', ()=>{ $('displayName').textContent='あなた'; $('logoutBtn').classList.add('hidden'); $('loginModal').style.display='flex'; });
+
+// show login modal at start
+$('loginModal').style.display='flex';
+
 /* End of file */
 </script>
 </body>
