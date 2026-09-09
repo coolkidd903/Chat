@@ -1,874 +1,408 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<title>Secure Chat — Group Edition</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="color-scheme" content="light dark">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06c755">
+<title>Secure Chat</title>
 <style>
-:root{
-  --bg:#061226;--panel:#07162a;--muted:#9fb0c8;--accent:#64f2d4;--accent2:#5aa8ff;--danger:#ff6b6b;--ok:#34d399;--border:rgba(255,255,255,0.04);
-  --radius:12px; font-family:Inter, "Helvetica Neue", Roboto, "Noto Sans JP", Arial, sans-serif; color-scheme:dark;
-}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#031026,#071123);color:#e6eef8}
-.container{max-width:1200px;margin:14px auto;padding:14px;display:grid;grid-template-columns:320px 1fr 320px;gap:14px}
-@media(max-width:1000px){ .container{grid-template-columns:1fr} .right{order:3} .left{order:1} .center{order:2} }
-.panel{background:var(--panel);border-radius:12px;padding:12px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-.header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:12px}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#042;font-weight:800}
-.title{font-weight:700}
-.muted{color:var(--muted);font-size:13px}
-.left{display:flex;flex-direction:column;gap:12px}
-.center{display:flex;flex-direction:column;gap:12px}
-.right{display:flex;flex-direction:column;gap:12px}
-input,textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit}
-button{padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;cursor:pointer}
-button.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;color:#042;font-weight:700}
-.peer-card{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px}
-.video-row{display:flex;gap:12px;align-items:flex-start}
-.video-large{flex:1;min-height:260px;border-radius:10px;overflow:hidden;background:#000;position:relative}
-.video-small{width:180px;height:120px;border-radius:8px;overflow:hidden;background:#000;position:relative}
-video{width:100%;height:100%;object-fit:cover;background:#000}
-.chat{height:360px;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
-.msg{max-width:78%;padding:8px;border-radius:10px;margin:6px 0;word-break:break-word}
-.me{margin-left:auto;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#042}
-.you{background:rgba(255,255,255,0.02);border:1px solid var(--border);color:var(--muted)}
-.msg-meta{font-size:12px;color:var(--muted);margin-top:6px;text-align:right}
-.composer{display:flex;gap:8px;align-items:center}
-.badge{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);border:1px solid var(--border);font-size:13px}
-.small{font-size:13px;color:var(--muted)}
-.list{list-style:none;padding-left:0;margin:0}
-.member{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px;border:1px solid transparent}
-.member:hover{border-color:rgba(255,255,255,0.02)}
-.kv{font-family:monospace;background:rgba(255,255,255,0.02);padding:6px;border-radius:6px}
-/* modal */
-.modal-backdrop{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center}
-.modal{background:var(--panel);padding:16px;border-radius:12px;max-width:720px;width:90%;max-height:80%;overflow:auto;border:1px solid var(--border)}
-.header-actions{display:flex;gap:8px;align-items:center}
-.hidden{display:none}
+:root{--green:#06c755;--green2:#00a948;--bg:#efeae2;--white:#fff;--ink:#17202a;--muted:#667085;--line:#e5e7eb;--nav:#111827;--blue:#4f8cff;--danger:#ef4444}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}.app{height:100dvh;display:grid;grid-template-columns:330px 1fr;grid-template-rows:1fr}.sidebar{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}.brand{height:62px;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}.brand .logo{width:38px;height:38px;border-radius:12px;background:var(--green);display:grid;place-items:center;color:#fff;font-weight:800}.brand h1{font-size:18px;margin:0}.brand small{color:var(--muted);display:block;font-size:11px}.me{margin:12px;padding:12px;background:#f7f8fa;border-radius:14px}.peerid{font:700 15px ui-monospace,monospace;letter-spacing:.12em}.my-actions{display:flex;gap:8px;margin-top:9px}.search{padding:0 12px 10px}.search input{width:100%;height:39px;border:0;border-radius:12px;background:#f0f2f5;padding:0 13px;outline:none}.tabs{display:flex;border-bottom:1px solid var(--line)}.tabs button{flex:1;border:0;background:#fff;padding:10px 6px;color:var(--muted);cursor:pointer}.tabs button.active{color:var(--green);font-weight:700;border-bottom:2px solid var(--green)}.list{overflow:auto;flex:1}.item{display:flex;gap:11px;padding:11px 13px;border:0;background:#fff;width:100%;text-align:left;cursor:pointer}.item:hover{background:#f6f7f9}.item.active{background:#eaf9ef}.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#ede9fe);font-weight:800;flex:none}.item .txt{min-width:0;flex:1}.item strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item p{margin:4px 0 0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.time{font-size:10px;color:#98a2b3;flex:none}.main{min-width:0;display:grid;grid-template-rows:62px 1fr 76px;position:relative}.topbar{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 16px}.top-title{display:flex;gap:11px;align-items:center}.top-title h2{font-size:16px;margin:0}.top-title small{display:block;color:var(--muted);font-size:11px}.top-actions{display:flex;gap:7px}.iconbtn{border:0;background:#f3f4f6;width:38px;height:38px;border-radius:12px;cursor:pointer}.iconbtn:hover{background:#e5e7eb}.chat{overflow:auto;padding:18px 16px;display:flex;flex-direction:column;gap:8px;background:radial-gradient(circle at 20% 0%,rgba(255,255,255,.45),transparent 30%),var(--bg)}.notice{align-self:center;background:rgba(255,255,255,.72);padding:6px 11px;border-radius:12px;color:#6b7280;font-size:11px}.bubble{max-width:min(72%,700px);display:flex;flex-direction:column;gap:3px}.bubble.mine{align-self:flex-end}.bubble.theirs{align-self:flex-start}.msg{padding:8px 10px;border-radius:12px;line-height:1.45;box-shadow:0 1px 1px rgba(0,0,0,.06);white-space:pre-wrap;overflow-wrap:anywhere}.mine .msg{background:#d9fdd3;border-top-right-radius:4px}.theirs .msg{background:#fff;border-top-left-radius:4px}.meta{font-size:10px;color:#7b8190;padding:0 5px}.composer{background:#f7f8fa;border-top:1px solid var(--line);display:flex;gap:8px;padding:11px}.composer textarea{flex:1;resize:none;border:0;border-radius:14px;padding:11px 13px;min-height:50px;outline:none;background:#fff}.send{border:0;background:var(--green);color:#fff;width:52px;border-radius:14px;cursor:pointer;font-weight:800}.empty{margin:auto;text-align:center;color:var(--muted);max-width:480px;line-height:1.7}.modal{position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}.modal.show{display:flex}.panel{width:min(640px,100%);max-height:90dvh;overflow:auto;background:#fff;border-radius:22px;padding:18px;box-shadow:0 28px 80px rgba(0,0,0,.24)}.panel h3{margin:0 0 6px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{margin-top:12px}.field label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px;outline:none}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}.btn{border:0;background:#eef2f7;padding:10px 14px;border-radius:12px;cursor:pointer}.btn.primary{background:var(--green);color:#fff}.btn.danger{background:#fee2e2;color:#991b1b}.video-stage{position:fixed;inset:0;background:#030712;z-index:70;display:none}.video-stage.show{display:block}.remote-video{width:100%;height:100%;object-fit:contain;background:#030712}.local-video{position:absolute;right:18px;top:18px;width:min(28vw,260px);aspect-ratio:16/9;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,.8);background:#111827}.callbar{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:10px;background:rgba(17,24,39,.78);backdrop-filter:blur(12px);padding:9px;border-radius:18px}.callbar button{width:48px;height:48px;border:0;border-radius:50%;cursor:pointer;background:#374151;color:#fff;font-size:18px}.callbar .hang{background:var(--danger)}.callname{position:absolute;left:18px;top:18px;color:#fff;background:rgba(17,24,39,.62);padding:8px 11px;border-radius:11px;font-weight:700}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;z-index:100}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.online{color:#0aaf4b}.danger-text{color:var(--danger)}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.settings-card{background:#f7f8fa;border:1px solid var(--line);border-radius:14px;padding:12px}.settings-card b{display:block;font-size:12px;margin-bottom:5px}.settings-card small{display:block;color:var(--muted);line-height:1.5}.ai-chat{height:320px;overflow:auto;background:#f7f8fa;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}.ai-msg{max-width:86%;padding:9px 11px;border-radius:12px;line-height:1.5;white-space:pre-wrap}.ai-msg.user{align-self:flex-end;background:#d9fdd3}.ai-msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--line)}.status-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#eef2f7;color:#475467;font-size:11px}.status-pill.ok{background:#dcfce7;color:#166534}.status-pill.warn{background:#fef3c7;color:#92400e}.port-list{max-height:150px;overflow:auto;background:#07111f;color:#d9e4f5;border-radius:12px;padding:9px;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap}.diag-card{background:#f7f8fa;border:1px solid var(--line);border-radius:12px;padding:10px}.diag-card b{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}.diag-card span{font:12px ui-monospace,monospace;overflow-wrap:anywhere}.logbox{height:300px;overflow:auto;background:#07111f;color:#d9e4f5;border-radius:12px;padding:11px;font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}.okmark{color:#047857}.badmark{color:#b91c1c}@media(max-width:760px){.settings-grid{grid-template-columns:1fr}.app{grid-template-columns:1fr}.sidebar{display:none}.main{grid-column:1}.bubble{max-width:88%}.grid2{grid-template-columns:1fr}.local-video{width:150px;right:10px;top:56px}.topbar{padding:0 10px}}
 </style>
-
-<!-- libs -->
-<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header class="panel header">
-      <div class="brand"><div class="logo">SC</div><div><div class="title">Secure Chat — Group Edition</div><div class="small muted">P2P first / Server fallback</div></div></div>
-      <div style="text-align:right" class="header-actions">
-        <div id="status" class="small muted">起動中…</div>
-        <div id="typing" class="small muted" aria-live="polite"></div>
-        <button id="settingsBtn" class="btn">設定</button>
-        <button id="logoutBtn" class="btn hidden">ログアウト</button>
-      </div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">S</div><div><h1>Secure Chat</h1><small>Private P2P messenger</small></div></div>
+    <div class="me"><div style="font-size:11px;color:#667085">あなたのPeer ID</div><div id="myId" class="peerid">------</div><div style="font-size:10px;color:#667085;margin-top:4px">🔒 更新後も同じIDを保持</div><div style="margin-top:9px"><button class="btn primary" style="width:100%" id="aiChatBtn">🤖 SecureAIとチャットする</button></div><div class="my-actions"><button class="btn" id="copyId">IDをコピー</button><button class="btn" id="nameBtn">名前設定</button><button class="btn primary" id="inviteBtn">招待リンク</button></div></div>
+    <div class="search"><input id="search" placeholder="チャット・フレンドを検索"></div>
+    <div class="tabs"><button class="active" data-tab="chats">チャット</button><button data-tab="friends">フレンド</button><button data-tab="history">履歴</button></div>
+    <div id="list" class="list"></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="top-title"><div class="avatar" id="topAvatar">?</div><div><h2 id="topName">Secure Chat</h2><small id="topStatus">Peer IDを発行中…</small></div></div>
+      <div class="top-actions"><button class="iconbtn" id="aiBtn" title="SecureAIとチャット">🤖</button><button class="iconbtn" id="settingsBtn" title="設定">⚙️</button><button class="iconbtn" id="logBtn" title="ログ">📜</button><button class="iconbtn" id="iceBtn" title="ICE診断">🧪</button><button class="iconbtn" id="groupBtn" title="グループ">👥</button><button class="iconbtn" id="friendBtn" title="フレンド追加">＋</button><button class="iconbtn" id="callBtn" title="ビデオ通話">📹</button></div>
     </header>
+    <section id="chat" class="chat"><div class="empty" id="empty"><b>Secure Chat</b><br>Peer IDを相手に渡して接続すると、ここから暗号化チャットできます。<br><br>ビデオ通話はカメラ・マイクの許可が必要です。</div></section>
+    <footer class="composer"><textarea id="message" placeholder="メッセージ…  Ctrl+Enterで送信"></textarea><button class="send" id="send">➤</button></footer>
+  </main>
+</div>
 
-    <aside class="panel left">
-      <div class="peer-card">
-        <div><div style="font-weight:700" id="displayName">あなた</div><div class="small muted" id="myId">ID: -</div></div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <button id="copyId">コピー</button>
-          <button id="regenerateId">再生成</button>
-        </div>
-      </div>
-
-      <div>
-        <label class="small">相手 Peer ID / グループ ID</label>
-        <input id="peerIdInput" placeholder="Peer ID または グループID" />
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="connectBtn" class="primary">接続</button>
-          <button id="disconnectBtn">切断</button>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-
-      <div>
-        <label class="small">グループチャット</label>
-        <div style="display:flex;gap:8px">
-          <button id="createGroupBtn" class="btn primary">グループ作成</button>
-          <button id="openJoinGroupBtn" class="btn">参加</button>
-        </div>
-        <div id="joinGroupArea" style="display:none;margin-top:8px">
-          <input id="joinGroupInput" placeholder="グループIDを入力" />
-          <div style="display:flex;gap:8px;margin-top:6px"><button id="joinGroupBtn" class="primary">参加する</button><button id="cancelJoinGroupBtn" class="btn">キャンセル</button></div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="small">現在参加中のルーム: <span id="currentRoom">なし</span></div>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-
-      <!-- original settings are accessible via the settings modal. keep minimal placeholder here -->
-      <div id="settingsPlaceholder" class="small muted">詳細設定は「設定」ボタンから開いてください</div>
-
-    </aside>
-
-    <main class="panel center">
-      <div class="video-row">
-        <div class="video-large">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <div style="position:absolute;left:12px;bottom:12px;color:var(--muted)">リモート</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div class="video-small"><video id="localVideo" autoplay muted playsinline></video><div style="position:absolute;left:8px;bottom:8px;color:var(--muted)">自分</div></div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;gap:8px">
-              <button id="muteAudioBtn" class="btn">マイクOFF</button>
-              <button id="muteVideoBtn" class="btn">カメラOFF</button>
-            </div>
-            <button id="callBtn" class="btn">通話</button>
-            <button id="hangupBtn" class="btn">切断</button>
-            <button id="shareScreenBtn" class="btn">画面共有</button>
-            <button id="stopShareBtn" class="btn">共有停止</button>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px" class="small">メンバー一覧（ルームに参加すると表示されます）</div>
-      <ul id="memberList" class="list" style="margin-top:6px"></ul>
-
-      <div class="chat" id="chatArea" role="log" aria-live="polite"></div>
-
-      <div class="composer" style="margin-top:8px">
-        <textarea id="msgInput" placeholder="メッセージを入力… (Ctrl/Cmd+Enterで送信)"></textarea>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <input id="fileInput" type="file" style="display:none" />
-          <button id="attachBtn" class="btn">添付</button>
-          <button id="sendBtn" class="primary">送信</button>
-        </div>
-      </div>
-    </main>
-
-    <aside class="panel right">
-      <div class="small">診断</div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="runDiag" class="btn">ICE診断</button>
-        <div class="kv" id="diagSummary">—</div>
-      </div>
-      <pre id="diagOut" style="margin-top:8px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;height:220px;overflow:auto"></pre>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-      <div class="small">通話履歴</div>
-      <ul id="callHistory" class="list" style="margin-top:8px;max-height:160px;overflow:auto"></ul>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="clearCallHistory" class="btn">履歴クリア</button>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-      <div class="small">ログ</div>
-      <pre id="log" style="margin-top:8px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;height:200px;overflow:auto"></pre>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="exportLogs" class="btn">ログ出力</button>
-      </div>
-    </aside>
-
-  </div>
-
-  <!-- Settings modal (contains RTC / DataChannel / Fallback settings) -->
-  <div id="settingsModal" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal">
-      <h3>設定</h3>
-      <div>
-        <label class="small">フォールバックサーバ</label>
-        <input id="fallbackHost" placeholder="https://fallback.example.com" />
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="startFallback" class="btn">フォールバック開始</button>
-          <button id="stopFallback" class="btn">フォールバック停止</button>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-
-      <div>
-        <label class="small">設定（RTC / DataChannel）</label>
-        <textarea id="rtcConfig" rows="5">{"iceServers":[{"urls":"stun:stun.l.google.com:19302"}],"iceTransportPolicy":"all"}</textarea>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <label><input id="dcReliable" type="checkbox" checked/> reliable</label>
-          <label>serialization <select id="dcSerialization"><option value="binary">binary</option><option value="json">json</option><option value="none">none</option></select></label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="saveRtc" class="btn">保存して再初期化</button>
-          <button id="testIce" class="btn">ICEテスト</button>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--border)" />
-      <div style="text-align:right;margin-top:12px"><button id="closeSettings" class="primary">閉じる</button></div>
-    </div>
-  </div>
-
-  <!-- Login modal -->
-  <div id="loginModal" class="modal-backdrop" style="display:flex;align-items:center;justify-content:center;">
-    <div class="modal">
-      <h3>ログイン</h3>
-      <p class="small">プロバイダを選択してログインしてください（ダミー実装）</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn" id="loginMicrosoft">Microsoft</button>
-        <button class="btn" id="loginGoogle">Google</button>
-        <button class="btn" id="loginApple">Apple</button>
-        <button class="btn" id="signupBtn">サインアップ</button>
-      </div>
-    </div>
-  </div>
+<div class="modal" id="modal"><div class="panel" id="panel"></div></div>
+<div class="video-stage" id="videoStage"><video id="remoteVideo" class="remote-video" autoplay playsinline></video><video id="localVideo" class="local-video" autoplay muted playsinline></video><div class="callname" id="callName">Secure Chat</div><div class="callbar"><button id="micBtn">🎙️</button><button id="camBtn">📷</button><button id="switchCamBtn">🔄</button><button id="hangBtn" class="hang">☎</button></div></div>
+<div class="toast" id="toast"></div>
 
 <script>
+'use strict';
 /*
-  Secure Chat — Group Edition (single HTML)
-  - Peer ID: fixed (per user request)
-  - Group: create / join / leave / member list
-  - Mesh P2P for group + server fallback (WebSocket) for relay (group only)
-  - AES-GCM via WebCrypto for session keys (ECDH) per-connection
-  - CryptoJS AES as passphrase fallback
-  - Typing indicator (入力中)
-  - File send (chunked) with fallback upload (group only)
-  - Screen share, call with mic/cam mute
-  - ICE diagnostic
+  Secure Chat single-file build.
+  - No external CDN.
+  - No third-party library source is copied into this file.
+  - Uses browser Web Crypto + WebRTC directly.
+  - Uses PeerServer signalling protocol messages so the page can still use
+    PeerJS Cloud/PeerServer as a broker without shipping PeerJS itself.
+  Important: signalling is external; message/call media travels peer-to-peer
+  when WebRTC can establish a direct path. Automatic port fallback is opt-in
+  and OFF by default; it never bypasses the browser or network firewall.
 */
+const $=id=>document.getElementById(id);
+const DB='SecureChatDB_v3';
+const LS={id:'securechat.peerid',name:'securechat.name',password:'securechat.pass',settings:'securechat.settings'};
+const safeStore={
+  get(key,fallback=null){try{const v=localStorage.getItem(key);return v===null?fallback:v}catch(e){return fallback}},
+  set(key,value){try{localStorage.setItem(key,value);return true}catch(e){return false}},
+  remove(key){try{localStorage.removeItem(key);return true}catch(e){return false}}
+};
+function validPeerId(x){return /^\d{6}$/.test(String(x||''));}
+function getPersistentPeerId(){
+  const old=safeStore.get(LS.id,'');
+  if(validPeerId(old)) return old;
+  const id=makeId();
+  safeStore.set(LS.id,id);
+  return id;
+}
+const state={
+ id:getPersistentPeerId(), name:safeStore.get(LS.name,'ユーザー')||'ユーザー', peerToken:randomToken(), ws:null, wsReady:false,
+ peerServerHost:'0.peerjs.com', peerServerPort:443, peerServerPath:'/', peerServerKey:'peerjs', peerScheme:'wss', fallbackPorts:[443,8443,8080,80], fallbackEnabled:false, fallbackTimeoutMs:3500, activeEndpoint:null, fallbackTried:false,
+ selected:null, connections:new Map(), calls:new Map(), localStream:null, chats:[], friends:[], callsHistory:[], groups:[], logs:[], lastSecurityAlert:'', aiHistory:[]
+};
+function makeId(){ let a=''; const n=new Uint32Array(1); do{crypto.getRandomValues(n); a=String(n[0]%900000+100000)}while(a==='000000'); return a; }
+function randomToken(){const a=new Uint32Array(3);crypto.getRandomValues(a);return [...a].map(x=>x.toString(36)).join('');}
+function now(){return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2300)}
+function save(){safeStore.set(LS.id,state.id);safeStore.set(LS.name,state.name);safeStore.set(LS.password,safeStore.get(LS.password,'')||'');try{safeStore.set(DB+'::data',JSON.stringify({chats:state.chats,friends:state.friends,callsHistory:state.callsHistory,groups:state.groups,logs:state.logs.slice(-500),aiHistory:state.aiHistory.slice(-40)}))}catch(e){addLog?.('ERROR','storage save failed',e.message)}}
+function load(){try{const d=JSON.parse(safeStore.get(DB+'::data','{}')||'{}');state.chats=Array.isArray(d.chats)?d.chats:[];state.friends=Array.isArray(d.friends)?d.friends:[];state.callsHistory=Array.isArray(d.callsHistory)?d.callsHistory:[];state.groups=Array.isArray(d.groups)?d.groups:[];state.logs=Array.isArray(d.logs)?d.logs:[];state.aiHistory=Array.isArray(d.aiHistory)?d.aiHistory:[]}catch(e){state.chats=[];state.friends=[];state.callsHistory=[];state.groups=[];state.logs=[];state.aiHistory=[]}}
+load();
+function loadSettings(){try{const x=JSON.parse(safeStore.get(LS.settings,'{}')||'{}');if(typeof x.host==='string'&&x.host)state.peerServerHost=x.host;if(Number.isInteger(x.port)&&x.port>0&&x.port<65536)state.peerServerPort=x.port;if(typeof x.path==='string'&&x.path)state.peerServerPath=x.path;if(typeof x.key==='string'&&x.key)state.peerServerKey=x.key;if(x.scheme==='ws'||x.scheme==='wss')state.peerScheme=x.scheme;if(Array.isArray(x.ports)&&x.ports.length)state.fallbackPorts=[...new Set(x.ports.map(Number).filter(v=>v>0&&v<65536))];if(typeof x.enabled==='boolean')state.fallbackEnabled=x.enabled;if(Number.isInteger(x.timeout)&&x.timeout>=1000)state.fallbackTimeoutMs=Math.min(x.timeout,15000)}catch(e){addLog?.('WARN','settings load failed',e.message)}}
+function saveSettings(){const ok=safeStore.set(LS.settings,JSON.stringify({host:state.peerServerHost,port:state.peerServerPort,path:state.peerServerPath,key:state.peerServerKey,scheme:state.peerScheme,ports:state.fallbackPorts,enabled:state.fallbackEnabled,timeout:state.fallbackTimeoutMs}));if(!ok)toast('設定を保存できませんでした');}
+loadSettings();
+function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+window.addEventListener('error',e=>{try{addLog('ERROR','uncaught error',`${e.message||'unknown'} @ ${e.filename||''}:${e.lineno||''}:${e.colno||''}`)}catch{}});
+window.addEventListener('unhandledrejection',e=>{try{addLog('ERROR','unhandled rejection',String(e.reason?.message||e.reason||'unknown'))}catch{}});
 
-///// Utilities /////
-const $ = id => document.getElementById(id);
-function log(...a){ const s=a.map(x=> typeof x==='object'?JSON.stringify(x):String(x)).join(' '); const el=$('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${s}\n`; el.scrollTop = el.scrollHeight; }
-function setStatus(s){ $('status').textContent = s; log('STATUS', s); }
-function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function generate6Digit(){ return String(Math.floor(100000 + Math.random()*900000)); }
-function generateId(pref='id'){ return pref+'-'+Math.random().toString(36).slice(2,9); }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function avatarText(n){return (n||'?').trim().slice(0,1).toUpperCase();}
 
-// base64 helpers for WebCrypto
-function arrayBufferToBase64(buffer){ let binary=''; const bytes=new Uint8Array(buffer); const len=bytes.byteLength; for(let i=0;i<len;i++) binary += String.fromCharCode(bytes[i]); return btoa(binary); }
-function base64ToArrayBuffer(b64){ const binary = atob(b64); const len=binary.length; const bytes = new Uint8Array(len); for(let i=0;i<len;i++) bytes[i]=binary.charCodeAt(i); return bytes.buffer; }
-
-///// Crypto helpers (ECDH + AES-GCM) /////
-const XCHG = {
-  async generateKeyPair(){
-    return await crypto.subtle.generateKey({ name:'ECDH', namedCurve:'P-256' }, true, ['deriveKey']);
-  },
-  async exportPublic(key){
-    return await crypto.subtle.exportKey('jwk', key);
-  },
-  async importPublicJwk(jwk){
-    return await crypto.subtle.importKey('jwk', jwk, { name:'ECDH', namedCurve:'P-256' }, true, []);
-  },
-  async deriveAesKey(privateKey, peerPublicKey){
-    return await crypto.subtle.deriveKey({ name:'ECDH', public: peerPublicKey }, privateKey, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
-  },
-  async aesGcmEncrypt(key, plain){
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const pt = new TextEncoder().encode(plain);
-    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, pt);
-    return { iv: arrayBufferToBase64(iv.buffer), ct: arrayBufferToBase64(ct) };
-  },
-  async aesGcmDecrypt(key, iv_b64, ct_b64){
+/* ---------- diagnostics / secure local log ---------- */
+function addLog(level,event,details=''){
+  const item={time:new Date().toISOString(),level,event,details:String(details||'')};
+  state.logs.push(item); if(state.logs.length>500)state.logs=state.logs.slice(-500);
+  const line=`[${new Date(item.time).toLocaleTimeString()}] [${level}] ${event}${item.details?' — '+item.details:''}`;
+  console.debug('[Secure Chat]',line);
+  if($('logView')){$('logView').textContent=state.logs.map(x=>`[${new Date(x.time).toLocaleTimeString()}] [${x.level}] ${x.event}${x.details?' — '+x.details:''}`).join('\
+');$('logView').scrollTop=$('logView').scrollHeight;}
+}
+function securityAlert(code,message){
+  if(state.lastSecurityAlert===code)return;
+  state.lastSecurityAlert=code;
+  addLog('SECURITY','security warning',message);
+  try{alert('⚠️ Secure Chat セキュリティ警告\
+\
+'+message+'\
+\
+これは傍受を断定するものではなく、安全な通信条件を確認できない状態を通知しています。')}catch{}
+  toast('⚠️ セキュリティ警告');
+}
+async function monitorSecurity(pc=null){
+  const problems=[];
+  if(!window.isSecureContext && location.hostname!=='localhost' && location.hostname!=='127.0.0.1') problems.push('このページはHTTPS等の安全なコンテキストではありません。カメラ/マイクやWebRTCの安全性に影響する可能性があります。');
+  if(!state.ws || state.ws.readyState!==WebSocket.OPEN) problems.push('シグナリング用WSSが接続されていません。接続先を確認してください。');
+  if(pc){
     try{
-      const iv = base64ToArrayBuffer(iv_b64);
-      const ct = base64ToArrayBuffer(ct_b64);
-      const ptBuf = await crypto.subtle.decrypt({ name:'AES-GCM', iv: new Uint8Array(iv) }, key, ct);
-      return new TextDecoder().decode(ptBuf);
-    }catch(e){ log('aes decrypt fail', e); return null; }
+      const stats=await pc.getStats();
+      const dtls=[]; stats.forEach(r=>{if(r.type==='transport'&&r.dtlsState)dtls.push(r.dtlsState)});
+      if(dtls.length&&dtls.every(s=>s==='failed'||s==='closed')) problems.push('WebRTCのDTLS暗号化トランスポートが正常状態ではありません。通話/データ接続を確認してください。');
+    }catch(e){addLog('WARN','security stats check failed',e.message)}
   }
-};
-
-// CryptoJS fallback encrypt/decrypt (passphrase)
-function aesEncryptWithPass(plain, pass){ return CryptoJS.AES.encrypt(plain, pass).toString(); }
-function aesDecryptWithPass(cipher, pass){ try{ return CryptoJS.AES.decrypt(cipher, pass).toString(CryptoJS.enc.Utf8) || null; }catch(e){ return null; } }
-
-///// App state /////
-const FIXED_PEER_ID = '123456'; // fixed per user request
-const APP = {
-  peer: null,
-  myId: FIXED_PEER_ID, // fixed
-  rtcConfig: null,
-  dataPrefs: { reliable: true, serialization: 'binary' },
-  connMap: new Map(), // peerId -> DataConnection
-  roomId: null,
-  members: new Set(),
-  fallback: { origin: '', ws: null, clientId: null, ready:false },
-  ecdhMap: new Map(), // peerId -> sessionKey (CryptoKey)
-  localStream: null,
-  screenStream: null,
-  currentCall: null,
-  callStart: null,
-  callHistory: []
-};
-
-// restore call history from localStorage
-try{ const ch = JSON.parse(localStorage.getItem('sc_call_history')||'[]'); APP.callHistory = Array.isArray(ch)?ch:[]; }catch(e){ APP.callHistory = []; }
-
-///// Peer setup with fixed ID /////
-function createPeerWithFixedId(){
-  const id = FIXED_PEER_ID;
-  APP.myId = id;
-  try{
-    if(APP.peer) try{ APP.peer.destroy(); }catch(e){}
-    APP.rtcConfig = APP.rtcConfig || (function(){ try{ return JSON.parse($('rtcConfig').value); }catch(e){ return {iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'} }})();
-    const options = { config: APP.rtcConfig };
-    APP.peer = new Peer(id, options);
-    APP.peer.on('open', id => {
-      $('myId').textContent = 'ID: ' + id;
-      setStatus('準備完了 (id:' + id + ')');
-      APP.fallback.clientId = id;
-      log('Peer open', id);
-    });
-    APP.peer.on('connection', dc => {
-      log('incoming DC from', dc.peer);
-      if(APP.connMap.has(dc.peer)){
-        dc.on('open', ()=> dc.close());
-        return;
-      }
-      bindDataConnection(dc, dc.peer);
-    });
-    APP.peer.on('call', call => {
-      log('incoming call', call.peer);
-      if(!confirm(call.peer + ' から通話があります。応答しますか？')){ try{ call.close(); }catch(e){} return; }
-      navigator.mediaDevices.getUserMedia({ audio:true, video:true }).then(s=>{
-        attachLocalStream(s);
-        call.answer(s);
-        bindCall(call);
-      }).catch(e=>{ alert('カメラ/マイク取得��敗: '+e); });
-    });
-    APP.peer.on('error', e=>{ log('peer err', e); setStatus('Peer error'); });
-    APP.peer.on('disconnected', ()=> setStatus('Peer disconnected'));
-  }catch(e){ log('createPeer error', e); setStatus('Peer create failed'); }
+  if(problems.length) securityAlert(problems.join('|'),problems.join('\
+'));
+  return problems.length===0;
+}
+function openNameModal(){
+  showModal(`<h3>👤 表示名</h3><p style="color:#667085;font-size:12px">相手に表示する名前を設定します。名前は端末内に保存されます。</p><div class="field"><label>表示名</label><input id="nameOnlyField" maxlength="40" value="${esc(state.name)}" placeholder="あなたの名前"></div><div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="saveNameOnly">保存</button></div>`);
+  $('saveNameOnly').onclick=()=>{state.name=$('nameOnlyField').value.trim()||'ユーザー';safeStore.set(LS.name,state.name);$('topStatus').textContent=state.wsReady?'オンライン':'シグナリング切断';save();closeModal();toast('表示名を保存しました');addLog('INFO','display name changed')};
 }
 
-// start peer immediately (keeps UI flow simple)
-createPeerWithFixedId();
 
-///// DataConnection handling (bind, ECDH handshake) /////
-async function performECDHInitiator(dc, peerId){
+async function copyText(text){
+  // HTTPS/localhost等でClipboard APIが使える場合
   try{
-    const kp = await XCHG.generateKeyPair();
-    APP.ecdhLocal = APP.ecdhLocal || {};
-    APP.ecdhLocal[peerId] = kp;
-    const jwk = await XCHG.exportPublic(kp.publicKey);
-    if(dc && dc.open) dc.send({ type:'ecdh-pub', jwk });
-  }catch(e){ log('ecdh initiator err', e); }
-}
-
-async function handleECDHPublic(peerId, jwk){
-  try{
-    let kp = APP.ecdhLocal && APP.ecdhLocal[peerId];
-    if(!kp){
-      kp = await XCHG.generateKeyPair();
-      APP.ecdhLocal = APP.ecdhLocal || {};
-      APP.ecdhLocal[peerId] = kp;
-      const myJwk = await XCHG.exportPublic(kp.publicKey);
-      const dc = APP.connMap.get(peerId);
-      if(dc && dc.open) dc.send({ type:'ecdh-pub', jwk: myJwk });
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+      return true;
     }
-    const peerPub = await XCHG.importPublicJwk(jwk);
-    const sessionKey = await XCHG.deriveAesKey(kp.privateKey, peerPub);
-    APP.ecdhMap.set(peerId, sessionKey);
-    log('ECDH session key set for', peerId);
-  }catch(e){ log('handleECDHPublic err', e); }
-}
-
-function bindDataConnection(dc, peerId){
-  APP.connMap.set(peerId, dc);
-  dc.on('open', ()=> {
-    log('DC open to', peerId);
-    performECDHInitiator(dc, peerId);
-    setStatus('DataChannel open: ' + peerId);
-  });
-  dc.on('data', async (data) => {
-    try{
-      if(data.type === 'ecdh-pub'){ await handleECDHPublic(peerId, data.jwk); return; }
-      if(data.type === 'msg'){
-        const key = APP.ecdhMap.get(peerId);
-        if(key && data.payload && data.payload.iv && data.payload.ct){
-          const plain = await XCHG.aesGcmDecrypt(key, data.payload.iv, data.payload.ct);
-          appendChat('you', '['+peerId+'] '+(plain||'(復号失敗)'));
-        } else {
-          const pass = $('passphrase')? $('passphrase').value || '': '';
-          if(pass){ const dec = aesDecryptWithPass(data.payload, pass); appendChat('you','['+peerId+'] '+(dec||'(復号失敗)')); }
-          else appendChat('you','['+peerId+'] '+data.payload);
-        }
-        return;
-      }
-      if(data.type === 'typing'){ showTypingIndicator(true, peerId); return; }
-      if(data.type === 'file-chunk'){ handleIncomingChunk(peerId, data); return; }
-      if(data.type === 'room-forward'){
-        handleIncomingRoomMessage(peerId, data.payload); return;
-      }
-      log('unknown dc data', data);
-    }catch(e){ log('dc data handler err', e); }
-  });
-  dc.on('close', ()=> { APP.connMap.delete(peerId); log('DC closed', peerId); });
-  dc.on('error', e=> log('DC error', e));
-}
-
-/* -------------------------
-   Group (room) functions
-   ------------------------- */
-
-function generateRoomId(){
-  return String(Math.floor(100000 + Math.random()*900000));
-}
-
-$('createGroupBtn').addEventListener('click', ()=>{
-  const rid = generateRoomId();
-  joinRoom(rid);
-  alert('ルームを作成しました: ' + rid);
-});
-
-$('openJoinGroupBtn').addEventListener('click', ()=> { $('joinGroupArea').style.display='block'; });
-$('cancelJoinGroupBtn').addEventListener('click', ()=> { $('joinGroupArea').style.display='none'; });
-$('joinGroupBtn').addEventListener('click', ()=> {
-  const rid = $('joinGroupInput').value.trim();
-  if(!rid) return alert('ルームIDを入力してください');
-  joinRoom(rid);
-  $('joinGroupArea').style.display='none';
-});
-
-async function joinRoom(roomId){
-  // join room via fallback server (group relay). Ensure fallback started.
-  if(!(APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)){
-    startFallback(); await sleep(300);
+  }catch(e){
+    addLog('WARN','clipboard API failed',e.message);
   }
-  if(!(APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)){
-    alert('フォールバックサーバに接続できません。フォールバックを開始してください。');
+  // file:// 等でも使える可能性がある旧式フォールバック
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.setAttribute('readonly','');
+    ta.style.position='fixed';
+    ta.style.opacity='0';
+    ta.style.pointerEvents='none';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0,ta.value.length);
+    const ok=document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }catch(e){
+    addLog('ERROR','clipboard fallback failed',e.message);
+    return false;
+  }
+}
+
+function wsStateText(){return state.ws?['CONNECTING','OPEN','CLOSING','CLOSED'][state.ws.readyState]||String(state.ws.readyState):'NONE'}
+function collectConnectionSnapshot(){
+  return [...state.connections.values()].map(c=>({remote:c.remote,kind:c.kind,state:c.pc.connectionState,ice:c.pc.iceConnectionState,gather:c.pc.iceGatheringState,sdp:c.pc.signalingState,dc:c.dc?.readyState||'-'}));
+}
+async function readIceStats(pc){
+  const out={candidatePairs:[],localCandidates:[],remoteCandidates:[],codecs:[],inbound:[],outbound:[]};
+  try{
+    const stats=await pc.getStats();
+    stats.forEach(r=>{
+      if(r.type==='candidate-pair' && (r.state==='succeeded'||r.nominated)){
+        out.candidatePairs.push({state:r.state,nominated:!!r.nominated,local:r.localCandidateId,remote:r.remoteCandidateId,protocol:r.protocol,bytesSent:r.bytesSent,bytesReceived:r.bytesReceived,rtt:r.currentRoundTripTime});
+      } else if(r.type==='local-candidate') out.localCandidates.push({id:r.id,type:r.candidateType,protocol:r.protocol,address:r.address||r.ip,port:r.port,url:r.url});
+      else if(r.type==='remote-candidate') out.remoteCandidates.push({id:r.id,type:r.candidateType,protocol:r.protocol,address:r.address||r.ip,port:r.port});
+      else if(r.type==='codec') out.codecs.push({mime:r.mimeType,clock:r.clockRate});
+      else if(r.type==='inbound-rtp') out.inbound.push({kind:r.kind,packetsLost:r.packetsLost,packetsReceived:r.packetsReceived});
+      else if(r.type==='outbound-rtp') out.outbound.push({kind:r.kind,packetsLost:r.packetsLost,packetsSent:r.packetsSent});
+    });
+  }catch(e){addLog('ERROR','getStats failed',e.message);}
+  return out;
+}
+async function runIceDiagnostic(targetPc=null){
+  const report={startedAt:new Date().toISOString(),browser:navigator.userAgent,webRTC:!!window.RTCPeerConnection,webSocket:!!window.WebSocket,media:!!navigator.mediaDevices?.getUserMedia,wsState:wsStateText(),peerId:state.id,connections:collectConnectionSnapshot(),iceServers:['stun:stun.l.google.com:19302','turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478']};
+  addLog('INFO','ICE diagnostic started',`WebSocket=${report.wsState}, connections=${report.connections.length}`);
+  let pc=targetPc;
+  let owned=false;
+  try{
+    if(!pc){
+      owned=true;
+      pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}]});
+      report.events=[];
+      pc.onicecandidate=e=>addLog('INFO','diagnostic ICE candidate',e.candidate?`${e.candidate.type} ${e.candidate.protocol||''} ${e.candidate.address||''}:${e.candidate.port||''}`:'end-of-candidates');
+      pc.onicecandidateerror=e=>addLog('WARN','diagnostic ICE candidate error',`${e.url||''} code=${e.errorCode||''} ${e.errorText||''}`);
+      pc.onicegatheringstatechange=()=>addLog('INFO','ICE gathering state',pc.iceGatheringState);
+      pc.oniceconnectionstatechange=()=>addLog('INFO','ICE connection state',pc.iceConnectionState);
+      pc.onconnectionstatechange=()=>addLog('INFO','Peer connection state',pc.connectionState);
+      pc.createDataChannel('ice-diagnostic');
+      const offer=await pc.createOffer({offerToReceiveAudio:false,offerToReceiveVideo:false});
+      await pc.setLocalDescription(offer);
+      const deadline=Date.now()+8000;
+      while(pc.iceGatheringState!=='complete' && Date.now()<deadline) await new Promise(r=>setTimeout(r,200));
+    }
+    report.after=collectConnectionSnapshot();
+    report.stats=await readIceStats(pc);
+    report.result={gathering:pc.iceGatheringState,ice:pc.iceConnectionState,connection:pc.connectionState};
+    addLog('INFO','ICE diagnostic finished',`gather=${report.result.gathering}, ice=${report.result.ice}, localCandidates=${report.stats.localCandidates.length}`);
+  }catch(e){report.error=e.message;addLog('ERROR','ICE diagnostic failed',e.message)}
+  finally{if(owned){try{pc.close()}catch{}}}
+  showIceReport(report);
+  return report;
+}
+function showIceReport(r){
+  const locals=r.stats?.localCandidates||[], pairs=r.stats?.candidatePairs||[], remotes=r.stats?.remoteCandidates||[];
+  const types=[...new Set(locals.map(x=>x.type).filter(Boolean))];
+  const verdict=r.error?'失敗':(types.length?'候補を取得できました':'候補なし');
+  showModal(`<h3>🧪 ICE診断</h3><p style="color:#667085;font-size:12px">Umbrella / NAT / STUN / TURN の切り分け用です。ログにはメッセージ本文やパスフレーズは記録しません。</p><div class="diag-grid"><div class="diag-card"><b>WebSocket</b><span>${esc(r.wsState)}</span></div><div class="diag-card"><b>WebRTC</b><span>${r.webRTC?'対応':'非対応'}</span></div><div class="diag-card"><b>ICE Gathering</b><span>${esc(r.result?.gathering||'—')}</span></div><div class="diag-card"><b>ICE Connection</b><span>${esc(r.result?.ice||'—')}</span></div><div class="diag-card"><b>Local Candidates</b><span>${locals.length} (${esc(types.join(', ')||'なし')})</span></div><div class="diag-card"><b>Selected Pair</b><span>${pairs.length?esc((pairs[0].protocol||'')+' / '+(pairs[0].rtt?Math.round(pairs[0].rtt*1000)+'ms':'rtt—')):'なし'}</span></div></div><div class="field"><label>判定</label><div class="diag-card"><span class="${r.error?'badmark':'okmark'}">${esc(verdict+(r.error?'：'+r.error:''))}</span></div></div><div class="field"><label>候補一覧</label><div class="logbox">${esc(JSON.stringify({local:locals,remote:remotes,pairs:pairs},null,2))}</div></div><div class="actions"><button class="btn" data-close>閉じる</button><button class="btn" id="rerunIce">再診断</button><button class="btn primary" id="copyIce">レポートをコピー</button></div>`);
+  $('rerunIce').onclick=()=>runIceDiagnostic();
+  $('copyIce').onclick=async()=>{await copyText(JSON.stringify(r,null,2));toast('ICEレポートをコピーしました')};
+}
+function showLogs(){
+  showModal(`<h3>📜 Secure Chat ログ</h3><p style="color:#667085;font-size:12px">接続・WebRTC・ICE・通話イベントを記録します。メッセージ本文や暗号鍵は記録しません。</p><div id="logView" class="logbox"></div><div class="actions"><button class="btn danger" id="clearLogs">ログ消去</button><button class="btn" id="copyLogs">コピー</button><button class="btn" data-close>閉じる</button></div>`);
+  $('logView').textContent=state.logs.map(x=>`[${new Date(x.time).toLocaleTimeString()}] [${x.level}] ${x.event}${x.details?' — '+x.details:''}`).join('\
+');$('logView').scrollTop=$('logView').scrollHeight;
+  $('copyLogs').onclick=async()=>{await copyText($('logView').textContent);toast('ログをコピーしました')};
+  $('clearLogs').onclick=()=>{state.logs=[];save();$('logView').textContent='';toast('ログを消去しました')};
+}
+
+/* ---------- WebCrypto application-layer encryption ---------- */
+const enc=new TextEncoder(), dec=new TextDecoder();
+async function deriveKey(pass,salt){const base=await crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+function b64(u){return btoa(String.fromCharCode(...new Uint8Array(u)));}
+function u8(s){const x=atob(s);return Uint8Array.from(x,c=>c.charCodeAt(0));}
+async function encryptJSON(obj,pass){if(!pass)throw Error('共有パスフレーズを設定してください');const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));const key=await deriveKey(pass,salt);const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,enc.encode(JSON.stringify(obj)));return {v:2,alg:'AES-256-GCM',kdf:'PBKDF2-SHA256',salt:b64(salt),iv:b64(iv),ct:b64(ct)};}
+async function decryptJSON(packet,pass){const key=await deriveKey(pass,u8(packet.salt));const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(packet.iv)},key,u8(packet.ct));return JSON.parse(dec.decode(pt));}
+
+/* ---------- PeerServer signalling subset, written independently ---------- */
+function wsUrl(host=state.peerServerHost,port=state.peerServerPort){return `${state.peerScheme}://${host}:${port}${state.peerServerPath}peerjs?key=${encodeURIComponent(state.peerServerKey)}&id=${encodeURIComponent(state.id)}&token=${encodeURIComponent(state.peerToken)}&version=1.5.5`;}
+function signalSend(m){if(state.ws&&state.ws.readyState===1){state.ws.send(JSON.stringify(m));addLog('SIGNAL',`send ${m.type}`,m.dst?`to=${m.dst}`:'');return true}addLog('WARN','signal send skipped','WebSocket not open');return false}
+function connectSignal(){clearTimeout(state.signalRetryTimer);state.fallbackTried=false;const primary=state.peerServerPort;const candidates=state.fallbackEnabled?[primary,...state.fallbackPorts.filter(p=>p!==primary)]:[primary];let index=0;state.ws=null;state.wsReady=false;$('topStatus').textContent='接続中…';const next=()=>{if(index>=candidates.length){state.wsReady=false;$('topStatus').textContent='接続失敗';$('topStatus').className='danger-text';addLog('ERROR','signaling failed',JSON.stringify(candidates));monitorSecurity();return}const port=candidates[index++];state.peerServerPort=port;const url=wsUrl(state.peerServerHost,port);addLog('INFO','trying signaling endpoint',`${state.peerScheme}://${state.peerServerHost}:${port}`);let opened=false,done=false;let sock;try{sock=new WebSocket(url)}catch(e){addLog('WARN','WebSocket constructor failed',`port=${port}`);setTimeout(next,50);return}state.ws=sock;const timer=setTimeout(()=>{if(done)return;done=true;try{sock.close()}catch{}addLog('WARN','signaling endpoint timeout',`port=${port}`);if(state.fallbackEnabled){state.fallbackTried=true;next()}},state.fallbackTimeoutMs);sock.onopen=()=>{if(done)return;done=true;opened=true;clearTimeout(timer);state.wsReady=true;state.activeEndpoint={scheme:state.peerScheme,host:state.peerServerHost,port};saveSettings();$('topStatus').textContent=`オンライン · ${port}`;$('topStatus').className='online';addLog('INFO','WebSocket open',url.replace(state.peerToken,'***'));monitorSecurity()};sock.onerror=()=>addLog('WARN','WebSocket error',`port=${port}`);sock.onclose=()=>{clearTimeout(timer);if(!opened){if(!done){done=true;if(state.fallbackEnabled){state.fallbackTried=true;next()}}return}state.wsReady=false;$('topStatus').textContent='シグナリング切断';$('topStatus').className='danger-text';addLog('WARN','WebSocket close',`port=${port}`)};sock.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handleSignal(m)}};next()}
+function handleSignal(m){
+  const type=m.type, p=m.payload||{}, src=m.src;
+  addLog('SIGNAL',`recv ${type}`,src?`from=${src}`:'');
+  if(type==='OPEN'){state.wsReady=true;$('topStatus').textContent='オンライン';$('topStatus').className='online';return;}
+  if(type==='ID-TAKEN'){toast('Peer IDが使用中です。ページを更新して再取得してください');return;}
+  if(type==='PEER-UNAVAILABLE'||type==='EXPIRE'){toast('相手のPeer IDが見つかりません');return;}
+  if(!src)return;
+  const key=src+'::'+(p.connectionId||'');
+  let c=state.connections.get(key)||state.connections.get(src);
+  if(type==='OFFER'){
+    c=makeRTCPeer(src,p.connectionId,p.type==='media'?'media':'data',false,p);
+    state.connections.set(key,c);
+    if(p.type==='media') incomingCall(c,p.metadata); else incomingDataOffer(c,p);
     return;
   }
-  APP.roomId = roomId;
-  $('currentRoom').textContent = roomId;
-  APP.fallback.ws.send(JSON.stringify({ type:'join-room', room: roomId }));
-  log('join sent to server for room', roomId);
+  if(c) handleRTCSignal(c,m);
 }
-
-// Server message handler integration
-function handleServerMessage(msg){
-  if(msg.type === 'room-members'){
-    const members = msg.members || [];
-    APP.members = new Set(members.filter(id=> id !== APP.myId));
-    renderMemberList();
-    for(const pid of APP.members) connectToPeer(pid);
-  } else if(msg.type === 'presence'){
-    if(msg.room !== APP.roomId) return;
-    if(msg.action === 'join'){
-      if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); }
-    } else if(msg.action === 'leave'){
-      APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){};
-      appendSystem(msg.clientId + ' が退出しました');
-    }
-  } else if(msg.type === 'room-message'){
-    if(msg.room !== APP.roomId) return;
-    handleIncomingRoomMessage(msg.from, msg.payload);
-  }
+function makePC(remote,connectionId,kind,initiator,meta){
+  const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}],sdpSemantics:'unified-plan'});
+  const c={remote,connectionId,kind,pc,dc:null,initiator,meta,remoteStream:new MediaStream(),pendingCandidates:[]};
+  addLog('INFO','RTCPeerConnection created',`kind=${kind}, remote=${remote}`);
+  pc.onicecandidate=e=>{if(e.candidate){addLog('ICE','candidate',`${e.candidate.candidateType||''} ${e.candidate.protocol||''} ${e.candidate.address||''}`);signalSend({type:'CANDIDATE',payload:{candidate:e.candidate,connectionId},dst:remote});}else addLog('ICE','candidate gathering complete',`remote=${remote}`);};
+  pc.onicecandidateerror=e=>addLog('WARN','ICE candidate error',`remote=${remote}, code=${e.errorCode||''}, url=${e.url||''}, ${e.errorText||''}`);
+  pc.onicegatheringstatechange=()=>addLog('ICE','gathering state',`${remote}: ${pc.iceGatheringState}`);
+  pc.oniceconnectionstatechange=()=>{addLog('ICE','connection state',`${remote}: ${pc.iceConnectionState}`);if(pc.iceConnectionState==='failed')readIceStats(pc).then(st=>addLog('ICE','failure stats',JSON.stringify({local:st.localCandidates.length,remote:st.remoteCandidates.length,pairs:st.candidatePairs.length})));};
+  pc.onconnectionstatechange=()=>{addLog('RTC','connection state',`${remote}: ${pc.connectionState}`);if(['connected','failed'].includes(pc.connectionState)){readIceStats(pc).then(st=>addLog('RTC','stats snapshot',JSON.stringify({pairs:st.candidatePairs.length,local:st.localCandidates.map(x=>x.type)})));monitorSecurity(pc);}};
+  pc.onsignalingstatechange=()=>addLog('RTC','signaling state',`${remote}: ${pc.signalingState}`);
+  pc.ontrack=e=>{addLog('MEDIA','remote track',`${remote}: ${e.track.kind}`);if(kind==='media'){$('remoteVideo').srcObject||($('remoteVideo').srcObject=c.remoteStream);c.remoteStream.addTrack(e.track)}};
+  pc.ondatachannel=e=>{addLog('DATA','incoming data channel',remote);c.dc=e.channel;bindData(c)};
+  return c;
 }
-
-// render members
-function renderMemberList(){
-  const ul = $('memberList'); ul.innerHTML = '';
-  APP.members.forEach(pid=>{
-    const li = document.createElement('li'); li.className='member';
-    li.innerHTML = `<span>${escapeHtml(pid)}</span><div style="display:flex;gap:6px"><button class="btn" onclick="connectToPeer('${pid}')">接続</button><button class="btn" onclick="pm('${pid}')">PM</button></div>`;
-    ul.appendChild(li);
-  });
-}
-
-/* Connect to peer if not connected already */
-function connectToPeer(peerId){
-  if(peerId === APP.myId) return;
-  if(APP.connMap.has(peerId)) return;
+function makeRTCPeer(remote,id,kind,initiator,payload){return makePC(remote,id,kind,initiator,payload?.metadata)}
+function bindData(c){c.dc.onopen=()=>{addLog('DATA','data channel open',c.remote);toast('P2P接続しました');monitorSecurity(c.pc);renderList();};c.dc.onmessage=async e=>{try{const p=JSON.parse(e.data),pass=safeStore.get(LS.password,'')||'';const data=p.e?await decryptJSON(p,pass):p;receivePacket(c.remote,data)}catch(err){console.warn(err)}};c.dc.onclose=()=>{addLog('DATA','data channel close',c.remote)};c.dc.onerror=e=>addLog('ERROR','data channel error',c.remote)}
+function setupData(c){if(!c.dc){c.dc=c.pc.createDataChannel('chat',{ordered:true});bindData(c);}if(c.initiator)offer(c,'data');}
+async function incomingDataOffer(c,p){try{await c.pc.setRemoteDescription(p.sdp);for(const ice of c.pendingCandidates.splice(0))await c.pc.addIceCandidate(ice);const a=await c.pc.createAnswer();await c.pc.setLocalDescription(a);signalSend({type:'ANSWER',payload:{sdp:c.pc.localDescription,type:'data',connectionId:c.connectionId,browser:'chrome'},dst:c.remote});c.pc.ondatachannel=e=>{c.dc=e.channel;bindData(c)};}catch(e){console.warn(e);}}
+async function offer(c,kind){const o=await c.pc.createOffer();await c.pc.setLocalDescription(o);signalSend({type:'OFFER',payload:{sdp:c.pc.localDescription,type:kind,label:'secure-chat',connectionId:c.connectionId,reliable:true,serialization:'json',metadata:{name:state.name}},dst:c.remote});}
+async function handleRTCSignal(c,m){const p=m.payload||{};try{if(m.type==='ANSWER'){await c.pc.setRemoteDescription(p.sdp);return}if(m.type==='CANDIDATE'){if(c.pc.remoteDescription)await c.pc.addIceCandidate(p.candidate);else c.pendingCandidates.push(p.candidate);return}}catch(e){console.warn(e)}}
+function prepareOfferConnection(remote,kind){const id=kind+'_'+randomToken();const c=makeRTCPeer(remote,id,kind,true,{name:state.name});state.connections.set(remote+'::'+id,c);if(kind==='data')setupData(c);return c;}
+async function answerMedia(c){if(!state.localStream)await getMedia();for(const t of state.localStream.getTracks())c.pc.addTrack(t,state.localStream);const a=await c.pc.createAnswer();await c.pc.setLocalDescription(a);signalSend({type:'ANSWER',payload:{sdp:c.pc.localDescription,type:'media',connectionId:c.connectionId,browser:'chrome'},dst:c.remote});}
+async function getMedia(){if(!navigator.mediaDevices?.getUserMedia)throw Error('このブラウザではカメラ・マイクを利用できません');addLog('MEDIA','requesting camera/microphone');state.localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});$('localVideo').srcObject=state.localStream;addLog('MEDIA','local media ready',state.localStream.getTracks().map(t=>t.kind+':'+t.enabled).join(', '));}
+async function callPeer(remote){addLog('CALL','outgoing call requested',remote);const pass=safeStore.get(LS.password,'')||'';if(!pass){openPassModal();return}try{await getMedia();$('videoStage').classList.add('show');$('callName').textContent=contactName(remote);const c=prepareOfferConnection(remote,'media');for(const t of state.localStream.getTracks())c.pc.addTrack(t,state.localStream);await offer(c,'media');saveCall(remote,'outgoing');}catch(e){toast('通話を開始できません: '+e.message)}}
+async function incomingCall(c,meta){
+  addLog('CALL','incoming call received',`${c.remote} / ${meta?.name||''}`);
   try{
-    const opts = { reliable: !!$('dcReliable').checked, serialization: $('dcSerialization').value };
-    const dc = APP.peer.connect(peerId, opts);
-    bindDataConnection(dc, peerId);
-  }catch(e){ log('connectToPeer err', e); }
+    alert(`📞 Secure Chat\n${meta?.name||c.remote} からビデオ通話がかかってきました。`);
+  }catch(e){addLog('WARN','incoming call alert failed',e.message)}
+  let accepted=false;
+  try{accepted=confirm(`${meta?.name||c.remote} からビデオ通話です。受けますか？`)}
+  catch(e){addLog('WARN','incoming call confirmation failed',e.message)}
+  if(!accepted){try{c.pc.close()}catch{};addLog('CALL','incoming call rejected',c.remote);return}
+  try{
+    await getMedia();
+    $('videoStage').classList.add('show');
+    $('callName').textContent=meta?.name||c.remote;
+    await answerMedia(c);
+    saveCall(c.remote,'incoming');
+    await monitorSecurity(c.pc);
+  }catch(e){
+    addLog('ERROR','incoming call failed',e.message);
+    toast('通話を受けられません: '+e.message);
+    try{c.pc.close()}catch{}
+  }
 }
+function hangup(){addLog('CALL','hangup');for(const c of state.connections.values())if(c.kind==='media')try{c.pc.close()}catch{}if(state.localStream){state.localStream.getTracks().forEach(t=>t.stop());state.localStream=null}$('localVideo').srcObject=null;$('remoteVideo').srcObject=null;$('videoStage').classList.remove('show')}
 
-/* Send group message: broadcast to all connected DCs and also send to server as room-message for relay */
-async function sendGroupMessage(text){
-  if(!APP.roomId) { alert('先にルームに参加してください'); return; }
-  const pass = $('passphrase')? $('passphrase').value || '': '';
-  let payloadStr = pass? aesEncryptWithPass(text, pass) : text;
-  // send to mesh peers
-  APP.connMap.forEach((dc, pid)=>{
-    try{ dc.send({ type:'room-forward', payload: payloadStr }); }catch(e){ log('mesh send err', e); }
+/* ---------- data model ---------- */
+function contactName(id){const f=state.friends.find(x=>x.id===id);return f?.name||id;}
+function saveCall(id,direction){state.callsHistory.unshift({id,direction,time:Date.now()});state.callsHistory=state.callsHistory.slice(0,100);save();}
+function sendPacket(remote,obj){const c=[...state.connections.values()].find(x=>x.remote===remote&&x.kind==='data'&&x.dc?.readyState==='open');if(!c){toast('先にPeer IDへ接続してください');return false}const pass=safeStore.get(LS.password,'')||'';encryptJSON(obj,pass).then(p=>c.dc.send(JSON.stringify(p))).catch(e=>toast(e.message));return true}
+function receivePacket(remote,obj){if(obj.type==='chat'){const chatId=remote;state.chats.push({id:crypto.randomUUID(),peer:remote,from:remote,text:obj.text,time:Date.now()});state.chats=state.chats.slice(-1000);save();if(state.selected===remote)renderChat(remote);renderList();}
+ if(obj.type==='hello'){addFriend(remote,obj.name,false);}
+ if(obj.type==='friend-request'){addFriend(remote,obj.name,false);toast('フレンド申請を受信しました');}
+ if(obj.type==='group-invite'){toast('グループ招待を受信しました');}
+}
+function connectData(remote){const c=prepareOfferConnection(remote,'data');c.dc=c.pc.createDataChannel('chat',{ordered:true});bindData(c);offer(c,'data');toast('接続要求を送信しました');}
+function addFriend(id,name,send=true){if(id===state.id)return;let f=state.friends.find(x=>x.id===id);if(!f){f={id,name:name||id,added:Date.now()};state.friends.push(f);save();renderList();}if(send){sendPacket(id,{type:'friend-request',name:state.name});}}
+function openPassModal(){showModal(`<h3>暗号化パスフレーズ</h3><div class="field"><label>共有パスフレーズ</label><input id="passField" type="password" placeholder="相手と同じ文字列"></div><div class="field"><label>表示名</label><input id="nameField" value="${esc(state.name)}"></div><div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="savePass">保存</button></div>`);$('savePass').onclick=()=>{safeStore.set(LS.password,$('passField').value);state.name=$('nameField').value.trim()||'ユーザー';safeStore.set(LS.name,state.name);closeModal();toast('設定を保存しました');};}
+
+
+/* ---------- settings / fallback / embedded SecureAI ---------- */
+async function testSinglePort(port){
+  return new Promise(resolve=>{
+    const t0=performance.now();let finished=false;let sock;
+    try{sock=new WebSocket(wsUrl(state.peerServerHost,port))}catch(e){resolve({port,ok:false,ms:0,error:'constructor'});return}
+    const timeout=setTimeout(()=>{if(finished)return;finished=true;try{sock.close()}catch{}resolve({port,ok:false,ms:Math.round(performance.now()-t0),error:'timeout'})},Math.min(state.fallbackTimeoutMs,5000));
+    sock.onopen=()=>{if(finished)return;finished=true;clearTimeout(timeout);const ms=Math.round(performance.now()-t0);try{sock.close()}catch{}resolve({port,ok:true,ms})};
+    sock.onerror=()=>{if(finished)return;finished=true;clearTimeout(timeout);try{sock.close()}catch{}resolve({port,ok:false,ms:Math.round(performance.now()-t0),error:'error'})};
   });
-  // send to server room for relay
-  if(APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState === WebSocket.OPEN){
-    APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: payloadStr }));
+}
+async function testFallbackPorts(){
+  const ports=[...new Set([state.peerServerPort,...state.fallbackPorts])];
+  showModal(`<h3>🔁 接続先テスト</h3><p style="color:#667085;font-size:12px">これは診断です。<b>自動フォールバックは有効化しません。</b>各ポートを短時間テストします。</p><div id="portTestResult" class="port-list">テスト開始…</div><div class="actions"><button class="btn" data-close>閉じる</button></div>`);
+  const out=[];for(const port of ports){const r=await testSinglePort(port);out.push(`${r.ok?'✅':'❌'} ${port} ${r.ok?`OPEN ${r.ms}ms`:r.error}`);if($('portTestResult'))$('portTestResult').textContent=out.join('\n')}addLog('INFO','fallback diagnostic complete',out.join(' | '));
+}
+function showSettings(){
+  const endpoint=state.activeEndpoint?`${state.activeEndpoint.scheme}://${state.activeEndpoint.host}:${state.activeEndpoint.port}`:'未接続';
+  showModal(`<h3>⚙️ 設定</h3><p style="color:#667085;font-size:12px">接続先、ICE診断、フォールバック、SecureAIを管理します。</p><div class="settings-grid"><div class="settings-card"><b>現在の接続先</b><span class="status-pill ${state.wsReady?'ok':'warn'}">${esc(endpoint)}</span><small>現在使われているシグナリング先。</small></div><div class="settings-card"><b>自動フォールバック</b><label style="margin-top:7px"><input id="setFallbackEnabled" type="checkbox" ${state.fallbackEnabled?'checked':''}> 接続失敗時だけ次のポートを試す</label><small>初期値はOFF。設定しない限り勝手に切り替えません。</small></div></div><div class="field"><label>シグナリングホスト</label><input id="setHost" value="${esc(state.peerServerHost)}"></div><div class="grid2"><div class="field"><label>優先ポート</label><input id="setPort" inputmode="numeric" value="${state.peerServerPort}"></div><div class="field"><label>方式</label><select id="setScheme"><option value="wss" ${state.peerScheme==='wss'?'selected':''}>WSS</option><option value="ws" ${state.peerScheme==='ws'?'selected':''}>WS</option></select></div></div><div class="field"><label>フォールバック候補（カンマ区切り）</label><input id="setPorts" value="${esc(state.fallbackPorts.join(', '))}"></div><div class="field"><label>1ポートあたりのタイムアウト(ms)</label><input id="setTimeout" inputmode="numeric" value="${state.fallbackTimeoutMs}"></div><div class="settings-grid"><div class="settings-card"><b>🧪 ICE診断</b><small>STUN/TURN candidate、ICE state、RTTなどを確認。</small><button class="btn" style="margin-top:8px" id="settingsIce">ICEテスト実行</button></div><div class="settings-card"><b>🔁 フォールバック診断</b><small>候補ポートをテストするだけで、設定自体は変更しません。</small><button class="btn" style="margin-top:8px" id="settingsPorts">接続先をテスト</button></div></div><div class="actions"><button class="btn" data-close>閉じる</button><button class="btn primary" id="saveNetSettings">保存して再接続</button></div>`);
+  $('settingsIce').onclick=()=>runIceDiagnostic();$('settingsPorts').onclick=()=>testFallbackPorts();$('saveNetSettings').onclick=()=>{state.peerServerHost=$('setHost').value.trim()||'0.peerjs.com';state.peerServerPort=Math.max(1,Math.min(65535,Number($('setPort').value)||443));state.peerScheme=$('setScheme').value;state.fallbackEnabled=$('setFallbackEnabled').checked;state.fallbackPorts=[...new Set($('setPorts').value.split(',').map(x=>Number(x.trim())).filter(v=>v>0&&v<65536))];state.fallbackTimeoutMs=Math.max(1000,Math.min(15000,Number($('setTimeout').value)||3500));saveSettings();closeModal();toast('設定を保存しました');connectSignal()}
+}
+function aiNormalize(text){return String(text||'').toLowerCase().normalize('NFKC').replace(/[\s　]+/g,' ').trim();}
+function aiTokens(text){return aiNormalize(text).replace(/[、。,.!?！？:：;；()（）「」『』<>]/g,' ').split(' ').filter(Boolean)}
+const AI_KB=[
+ {keys:['peerid','peer id','id','6桁','更新','リロード'],tag:'identity',answer:()=>`現在のPeer IDは ${state.id}。6桁のIDをlocalStorageへ保存し、次回ロード時に同じ値を再利用します。保存領域が利用できない環境でも、画面上は動作を続けますが永続化は保証できません。`},
+ {keys:['ice','stun','turn','candidate','nat'],tag:'ice',answer:()=>`ICE診断ではICE gathering/connection state、host/srflx/relay候補、candidate error、RTTを確認できます。設定から実行できます。relayだけならTURN経路、srflxが無ければSTUN到達性やNAT/ネットワーク制限を確認してください。`},
+ {keys:['port','ポート','wss','websocket','接続先','フォールバック'],tag:'network',answer:()=>`現在のシグナリング先は ${state.peerServerHost}:${state.peerServerPort} (${state.peerScheme})。自動フォールバックは ${state.fallbackEnabled?'ON':'OFF'}。OFFなら勝手に切り替えません。設定の「接続先をテスト」は診断だけです。`},
+ {keys:['call','通話','ビデオ','カメラ','マイク'],tag:'call',answer:()=>`ビデオ通話は相手を選んで📹。通話中は🎙️/📷で音声・映像を切替。ブラウザのカメラ・マイク権限が必要です。`},
+ {keys:['log','ログ','エラー','診断'],tag:'logs',answer:()=>`ログにはINFO/WARN/ERROR/RTC/ICE/CALLなどを記録します。メッセージ本文、パスフレーズ、暗号鍵はログへ入れない設計です。`},
+ {keys:['security','安全','傍受','盗聴','暗号'],tag:'security',answer:()=>`Secure ChatはWebRTCのDTLSやWSS、ICE状態を監視し、異常を危険兆候として知らせます。ただしブラウザ単体では「誰かが傍受している」と断定はできません。`},
+ {keys:['name','名前','表示名'],tag:'name',answer:()=>`現在の表示名は「${state.name}」。左上の「名前設定」から変更できます。`},
+ {keys:['hello','こんにちは','help','使い方','何ができる'],tag:'help',answer:()=>`私はSecureAIです。Secure Chatの現在状態を参照しながら、ID、ICE、ポート、フォールバック、通話、ログ、セキュリティについて案内します。`}
+];
+function aiScore(q,keys){const text=aiNormalize(q);let score=0;for(const k of keys){const n=aiNormalize(k);if(!n)continue;if(text.includes(n))score+=n.length>2?3:1;const toks=aiTokens(n);for(const t of toks){if(t&&text.includes(t))score+=1}}return score}
+function secureAIAnswer(q){
+  const text=String(q||'').trim();if(!text)return '質問を入力してください。';
+  const normalized=aiNormalize(text);
+  if(/^(設定|せってい)$/.test(normalized)){showSettings();return '設定を開きました。';}
+  if(/^(iceテスト|ice 診断|ice診断)$/.test(normalized)){runIceDiagnostic();return 'ICE診断を開始しました。';}
+  if(/^(ログ|log)$/.test(normalized)){showLogs();return 'ログを開きました。';}
+  if(/^(状態|ステータス|status)$/.test(normalized)){return `WSS=${state.wsReady?'接続':'未接続'} / PeerID=${state.id} / 相手=${state.selected||'なし'} / 通話=${[...state.calls.values()].length?'あり':'なし'} / fallback=${state.fallbackEnabled?'ON':'OFF'}`;}
+  const ranked=AI_KB.map(x=>({...x,score:aiScore(text,x.keys)})).sort((a,b)=>b.score-a.score);
+  const best=ranked[0];
+  if(best?.score>=2)return best.answer();
+  if(/今|現在|状態|status|どう/.test(aiNormalize(text))){
+    return `現在状態: ${state.wsReady?'WSS接続中':'WSS未接続'} / WebRTC=${!!window.RTCPeerConnection} / PeerID=${state.id} / 選択相手=${state.selected||'なし'} / フォールバック=${state.fallbackEnabled?'ON':'OFF'}`;
   }
-  appendChat('me', '(group) ' + text);
+  return `その質問はまだ私のローカル知識ベースにありません。SecureAIは外部APIを使わず、このHTML内の知識とSecure Chatの実行状態から回答します。現在は「ID」「ICE」「ポート」「フォールバック」「通話」「ログ」「セキュリティ」「名前」に対応しています。`;
 }
 
-/* handle incoming room message (from server or forwarded peer) */
-function handleIncomingRoomMessage(from, payload){
-  const pass = $('passphrase')? $('passphrase').value || '': '';
-  if(pass){
-    const dec = aesDecryptWithPass(payload, pass);
-    if(dec !== null){ appendChat('you', '['+from+'] '+dec); return; }
-  }
-  appendChat('you', '['+from+'] '+payload);
-}
-
-/* Bind send button to group or direct */
-$('sendBtn').addEventListener('click', async ()=>{
-  const text = $('msgInput').value.trim(); if(!text) return;
-  if(APP.roomId) await sendGroupMessage(text);
-  else {
-    const target = $('peerIdInput').value.trim();
-    if(!target) return alert('相手IDを入力してくださいか、グループに参加してください');
-    if(APP.connMap.has(target)){
-      const dc = APP.connMap.get(target);
-      const key = APP.ecdhMap && APP.ecdhMap.get(target);
-      if(key){ const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc }); appendChat('me', text); }
-      else {
-        const pass = $('passphrase')? $('passphrase').value || '': '';
-        const payload = pass ? aesEncryptWithPass(text, pass) : text;
-        dc.send({ type:'msg', payload }); appendChat('me', text);
-      }
-    } else {
-      // Per request: fallback only for group chats. for 1:1, require peer connection.
-      alert('相手と直接接続されていません。2人チャットは P2P を使います。相手の Peer ID を確認して接続してください。');
-    }
-  }
-  $('msgInput').value = '';
-});
-
-/* Typing indicator: when local typing, notify peers and server room */
-let typingTimer = null;
-$('msgInput').addEventListener('input', ()=>{
-  notifyTyping(true);
-  if(typingTimer) clearTimeout(typingTimer);
-  typingTimer = setTimeout(()=> notifyTyping(false), 1500);
-});
-function notifyTyping(flag){
-  $('typing').textContent = flag ? '入力中…' : '';
-  APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'typing', value:flag }); }catch(e){} });
-  if(APP.roomId && APP.fallback.ready && APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN){
-    APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: JSON.stringify({ type:'typing', from: APP.myId, value: flag }) }));
-  }
-}
-
-/* -------------------------
-   Fallback server (WebSocket) handling
-   ------------------------- */
-
-function startFallback(){
-  if(APP.fallback.ready) return;
-  const origin = $('fallbackHost').value.trim();
-  if(!origin) return alert('フォールバックサーバのURLを入力してください');
-  APP.fallback.origin = origin;
-  let wsUrl = origin.replace(/^http/, 'ws');
-  if(origin.startsWith('https:')) wsUrl = origin.replace('https:', 'wss:');
-  APP.fallback.ws = new WebSocket(wsUrl);
-  APP.fallback.ws.onopen = ()=> {
-    APP.fallback.ready = true;
-    setStatus('Fallback connected');
-    APP.fallback.ws.send(JSON.stringify({ type:'register', clientId: APP.myId }));
-    log('fallback connected');
+function openSecureAI(){
+  showModal(`<h3>🤖 SecureAI</h3><p style="color:#667085;font-size:12px">外部APIなし。このHTML内のローカルAIエンジンが、会話履歴とSecure Chatの現在状態を参照します。</p><div id="aiChat" class="ai-chat"></div><div class="field"><label>質問</label><input id="aiInput" maxlength="500" placeholder="例：今のICE状態を教えて"></div><div class="actions"><button class="btn" data-close>閉じる</button><button class="btn primary" id="aiAsk">質問する</button></div>`);
+  const chat=$('aiChat');
+  const history=state.aiHistory.slice(-12);
+  if(!history.length){chat.insertAdjacentHTML('beforeend','<div class="ai-msg bot">こんにちは！SecureAIです 🤖<br>Secure Chatの状態、ICE、ポート、通話、ログなどを質問できます。</div>')}
+  history.forEach(m=>chat.insertAdjacentHTML('beforeend',`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${esc(m.text)}</div>`));
+  const ask=()=>{
+    try{
+      const input=$('aiInput');if(!input)return;const q=input.value.trim();if(!q)return;
+      const answer=secureAIAnswer(q);
+      state.aiHistory.push({role:'user',text:q,time:Date.now()});
+      state.aiHistory.push({role:'bot',text:answer,time:Date.now()});
+      state.aiHistory=state.aiHistory.slice(-40);save();
+      chat.insertAdjacentHTML('beforeend',`<div class="ai-msg user">${esc(q)}</div><div class="ai-msg bot">${esc(answer)}</div>`);
+      chat.scrollTop=chat.scrollHeight;input.value='';input.focus();
+    }catch(e){addLog('ERROR','SecureAI failed',e.message);toast('SecureAIでエラーが発生しました')}
   };
-  APP.fallback.ws.onmessage = ev => {
-    try{
-      const msg = JSON.parse(ev.data);
-      if(msg.type === 'message'){
-        handleIncomingRoomMessage(msg.from, msg.payload);
-      } else if(msg.type === 'registered'){ log('registered on fallback', msg.clientId); }
-      else if(msg.type === 'room-members'){ handleServerRoomMessage(msg); }
-      else if(msg.type === 'presence' || msg.type === 'room-message'){ handleServerRoomMessage(msg); }
-      else if(msg.type === 'queued'){ log('queued msg', msg); }
-      else log('fallback msg', msg);
-    }catch(e){ log('ws parse err', e); }
-  };
-  APP.fallback.ws.onclose = ()=> { APP.fallback.ready=false; setStatus('Fallback closed'); log('fallback closed'); };
-  APP.fallback.ws.onerror = e => { log('fallback ws error', e); setStatus('Fallback error'); };
+  $('aiAsk').onclick=ask;
+  $('aiInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ask()}};
 }
 
-/* Server room message handler */
-function handleServerRoomMessage(msg){
-  if(msg.type === 'room-members'){
-    const arr = msg.members || [];
-    APP.members = new Set(arr.filter(id=> id !== APP.myId));
-    renderMemberList();
-    for(const pid of APP.members) connectToPeer(pid);
-  } else if(msg.type === 'presence'){
-    if(msg.room !== APP.roomId) return;
-    if(msg.action === 'join'){ if(msg.clientId !== APP.myId){ APP.members.add(msg.clientId); renderMemberList(); connectToPeer(msg.clientId); appendSystem(msg.clientId + ' が参加しました'); } }
-    if(msg.action === 'leave'){ APP.members.delete(msg.clientId); renderMemberList(); const dc = APP.connMap.get(msg.clientId); if(dc) try{ dc.close(); }catch(e){} appendSystem(msg.clientId + ' が退出しました'); }
-  } else if(msg.type === 'room-message'){
-    if(msg.room !== APP.roomId) return;
-    try{
-      const p = msg.payload;
-      if(typeof p === 'string'){
-        const maybe = JSON.parse(p);
-        if(maybe && maybe.type === 'typing'){ showTypingIndicator(maybe.value, msg.from); return; }
-      }
-    }catch(e){}
-    handleIncomingRoomMessage(msg.from, msg.payload);
-  }
-}
+/* ---------- UI ---------- */
+function renderList(){const tab=document.querySelector('.tabs button.active')?.dataset.tab||'chats',q=$('search').value.trim().toLowerCase(),list=$('list');let html='';if(tab==='friends'){state.friends.filter(f=>(f.name+' '+f.id).toLowerCase().includes(q)).forEach(f=>html+=`<button class="item ${state.selected===f.id?'active':''}" data-peer="${esc(f.id)}"><span class="avatar">${esc(avatarText(f.name))}</span><span class="txt"><strong>${esc(f.name)}</strong><p>${esc(f.id)}</p></span></button>`);if(!html)html='<div style="padding:20px;color:#667085;font-size:13px">まだフレンドがいません。</div>'}
+else if(tab==='history'){state.callsHistory.forEach(c=>html+=`<div class="item"><span class="avatar">☎</span><span class="txt"><strong>${esc(contactName(c.id))}</strong><p>${c.direction==='outgoing'?'発信':'着信'}・${new Date(c.time).toLocaleString()}</p></span></div>`);if(!html)html='<div style="padding:20px;color:#667085;font-size:13px">通話履歴はありません。</div>'}
+else{const ids=[...new Set(state.chats.map(c=>c.peer))];ids.filter(id=>!q||contactName(id).toLowerCase().includes(q)||id.includes(q)).forEach(id=>{const arr=state.chats.filter(c=>c.peer===id);const x=arr.at(-1);html+=`<button class="item ${state.selected===id?'active':''}" data-peer="${esc(id)}"><span class="avatar">${esc(avatarText(contactName(id)))}</span><span class="txt"><strong>${esc(contactName(id))}</strong><p>${esc(x?.text||'会話を開始')}</p></span><span class="time">${x?new Date(x.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):''}</span></button>`});state.friends.filter(f=>!ids.includes(f.id)&&(!q||f.name.toLowerCase().includes(q)||f.id.includes(q))).forEach(f=>html+=`<button class="item" data-peer="${esc(f.id)}"><span class="avatar">${esc(avatarText(f.name))}</span><span class="txt"><strong>${esc(f.name)}</strong><p>新しいチャット</p></span></button>`);if(!html)html='<div style="padding:20px;color:#667085;font-size:13px">チャットを選択するか、＋から相手を追加してください。</div>'}
+list.innerHTML=html;list.querySelectorAll('[data-peer]').forEach(e=>e.onclick=()=>selectPeer(e.dataset.peer));}
+function renderChat(peer){state.selected=peer;$('topName').textContent=contactName(peer);$('topAvatar').textContent=avatarText(contactName(peer));$('topStatus').textContent=(state.connections.get(peer)?'P2P接続済み':'未接続・接続ボタンから開始');const chat=$('chat');const arr=state.chats.filter(c=>c.peer===peer);chat.innerHTML='<div class="notice">🔒 アプリ層暗号化チャット</div>';if(!arr.length){chat.innerHTML+='<div class="empty"><b>'+esc(contactName(peer))+'</b> との会話を開始しましょう。</div>'}arr.forEach(m=>{const mine=m.from===state.id;chat.insertAdjacentHTML('beforeend',`<div class="bubble ${mine?'mine':'theirs'}"><div class="msg">${esc(m.text)}</div><div class="meta">${new Date(m.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div></div>`)});chat.scrollTop=chat.scrollHeight;}
+function selectPeer(peer){state.selected=peer;renderChat(peer);renderList();}
+function showModal(content){$('panel').innerHTML=content;$('modal').classList.add('show');$('panel').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal)}function closeModal(){$('modal').classList.remove('show')}
 
-/* render member UI (duplicate safe) */
-function renderMemberList(){
-  const ul = $('memberList'); ul.innerHTML='';
-  APP.members.forEach(pid=>{
-    const li = document.createElement('li'); li.className='member';
-    li.innerHTML = `<span>${escapeHtml(pid)}</span><div style="display:flex;gap:6px"><button class="btn" onclick="connectToPeer('${pid}')">接続</button><button class="btn" onclick="pm('${pid}')">PM</button></div>`;
-    ul.appendChild(li);
-  });
-}
+$('myId').textContent=state.id;$('settingsBtn').onclick=showSettings;$('aiBtn').onclick=openSecureAI;$('aiChatBtn').onclick=openSecureAI;$('nameBtn').onclick=openNameModal;$('copyId').onclick=async()=>{const ok=await copyText(state.id);toast(ok?'Peer IDをコピーしました':'コピーできませんでした。IDを選択して手動でコピーしてください')};$('inviteBtn').onclick=()=>{const u=new URL(location.href);u.hash='peer='+state.id;copyText(u.toString());showModal(`<h3>招待リンク</h3><p style="color:#667085">このリンクを共有すると、相手側にあなたのPeer IDがセットされます。</p><div class="field"><input id="inviteField" value="${esc(u.toString())}" readonly></div><div class="actions"><button class="btn" data-close>閉じる</button><button class="btn primary" id="copyInvite">コピー</button></div>`);$('copyInvite').onclick=async()=>{const ok=await copyText(u.toString());toast(ok?'招待リンクをコピーしました':'コピーできませんでした。リンクを選択して手動でコピーしてください')}};
+$('friendBtn').onclick=()=>showModal(`<h3>フレンド追加</h3><div class="field"><label>Peer ID（6桁）</label><input id="peerField" inputmode="numeric" maxlength="6" placeholder="123456"></div><div class="field"><label>相手の表示名（任意）</label><input id="friendNameField" placeholder="友だち"></div><div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="addFriend">追加して接続</button></div>`);
+$('groupBtn').onclick=()=>showModal(`<h3>グループチャット</h3><p style="color:#667085">この単一HTML版では、グループは端末内の会話コンテナとして管理し、参加者ごとのP2P接続へ個別送信します。</p><div class="field"><label>グループ名</label><input id="groupName" placeholder="グループ"></div><div class="field"><label>参加者Peer ID（カンマ区切り）</label><textarea id="groupPeers" placeholder="123456,234567"></textarea></div><div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="createGroup">作成</button></div>`);
+$('createGroup')?.addEventListener('click',()=>{const name=$('groupName').value.trim()||'グループ',peers=$('groupPeers').value.split(',').map(x=>x.trim()).filter(Boolean);state.groups.push({id:crypto.randomUUID(),name,peers,created:Date.now()});save();closeModal();toast('グループを作成しました');});
+$('addFriend')?.addEventListener('click',()=>{const id=$('peerField').value.trim(),name=$('friendNameField').value.trim()||id;if(!/^\d{6}$/.test(id)){toast('6桁のPeer IDを入力してください');return}addFriend(id,name,false);connectData(id);closeModal();selectPeer(id);});
+$('callBtn').onclick=()=>{if(!state.selected){toast('相手を選択してください');return}callPeer(state.selected)};$('send').onclick=()=>doSend();$('message').onkeydown=e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();doSend()}};
+function doSend(){const text=$('message').value.trim();const peer=state.selected;if(!text||!peer)return;const obj={type:'chat',text};if(!sendPacket(peer,obj))return;state.chats.push({id:crypto.randomUUID(),peer,from:state.id,text,time:Date.now()});state.chats=state.chats.slice(-1000);save();$('message').value='';renderChat(peer);renderList();}
+$('logBtn').onclick=showLogs;$('iceBtn').onclick=()=>runIceDiagnostic();$('micBtn').onclick=()=>{const t=state.localStream?.getAudioTracks?.()[0];if(t){t.enabled=!t.enabled;$('micBtn').textContent=t.enabled?'🎙️':'🔇'}};$('camBtn').onclick=()=>{const t=state.localStream?.getVideoTracks?.()[0];if(t){t.enabled=!t.enabled;$('camBtn').textContent=t.enabled?'📷':'🚫'}};$('switchCamBtn').onclick=()=>toast('Chromebookではカメラ切替デバイス選択を次版で追加できます');$('hangBtn').onclick=()=>{hangup();toast('通話を終了しました')};$('modal').onclick=e=>{if(e.target===$('modal'))closeModal()};document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderList()});$('search').oninput=renderList;
 
-/* send PM */
-function pm(peerId){
-  const text = prompt('PM to ' + peerId);
-  if(!text) return;
-  if(APP.connMap.has(peerId)){
-    const dc = APP.connMap.get(peerId);
-    const pass = $('passphrase')? $('passphrase').value || '': '';
-    if(APP.ecdhMap && APP.ecdhMap.get(peerId)){
-      (async ()=>{ const key = APP.ecdhMap.get(peerId); const enc = await XCHG.aesGcmEncrypt(key, text); dc.send({ type:'msg', payload: enc }); })();
-    } else {
-      const payload = pass ? aesEncryptWithPass(text, pass) : text;
-      dc.send({ type:'msg', payload });
-    }
-    appendChat('me', '(PM) ' + text);
-  } else {
-    alert('相手と直接接続されていません。2人チャットはP2Pを使用するため、相手のPeer IDを確認して接続してください。');
-  }
-}
-
-/* -------------------------
-   Mesh connect helper
-   ------------------------- */
-// connectToPeer already defined above
-
-/* file chunk send/receive (used in both group and 1:1) */
-const CHUNK_SIZE = 60 * 1024;
-const incomingFiles = {}; // id -> {chunks, total, filename}
-$('attachBtn').addEventListener('click', ()=> $('fileInput').click());
-$('fileInput').addEventListener('change', async (ev)=>{
-  const f = ev.target.files[0]; if(!f) return;
-  if(APP.roomId){
-    // group: use server upload for group files
-    try{
-      const res = await uploadToServer(f);
-      const payload = { type:'file', meta: { fileUrl: APP.fallback.origin + res.url, filename: res.originalName, size: res.size } };
-      APP.fallback.ws.send(JSON.stringify({ type:'room-message', room: APP.roomId, payload: JSON.stringify(payload) }));
-      appendChat('me', '(group file) ' + f.name);
-    }catch(e){ log('upload error', e); alert('アップロード失敗'); }
-  } else {
-    // P2P chunk to peers
-    if(APP.connMap.size === 0){ alert('相手と接続されていません。ファイル送信はP2Pで行われます。'); $('fileInput').value=''; return; }
-    const dataUrl = await readFileAsDataURL(f);
-    const payload = $('passphrase') && $('passphrase').value ? aesEncryptWithPass(dataUrl, $('passphrase').value) : dataUrl;
-    const total = Math.ceil(payload.length / CHUNK_SIZE);
-    const id = generateId('file');
-    APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'file-meta', id, filename: f.name, total }); }catch(e){} });
-    for(let i=0;i<total;i++){
-      const chunk = payload.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE);
-      APP.connMap.forEach((dc, pid)=> { try{ dc.send({ type:'file-chunk', id, index:i, data: chunk }); }catch(e){} });
-      await sleep(8);
-    }
-    appendChat('me','(file P2P) ' + f.name);
-  }
-  $('fileInput').value='';
-});
-
-function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(file); }); }
-
-function handleIncomingChunk(fromPeerId, obj){
-  const { id, index, data, filename, total } = obj;
-  incomingFiles[id] = incomingFiles[id] || { chunks: [], total: total || obj.total, filename: filename || obj.filename, ts: Date.now() };
-  incomingFiles[id].chunks[index] = data;
-  const st = incomingFiles[id];
-  if(st.chunks.filter(Boolean).length === st.total){
-    const full = st.chunks.join('');
-    delete incomingFiles[id];
-    const pass = $('passphrase')? $('passphrase').value || '': '';
-    if(pass){
-      const dec = aesDecryptWithPass(full, pass);
-      if(dec) appendImage('you', dec);
-      else appendChat('you','(ファイル復号失敗) ' + st.filename);
-    } else appendImage('you', full);
-  }
-}
-
-function appendImage(who, dataUrl){ const el=document.createElement('div'); el.className='msg ' + (who==='me'?'me':'you'); const img=document.createElement('img'); img.src=dataUrl; img.style.maxWidth='220px'; img.style.borderRadius='8px'; el.appendChild(img); const meta=document.createElement('div'); meta.className='msg-meta'; meta.textContent=new Date().toLocaleTimeString(); el.appendChild(meta); $('chatArea').appendChild(el); $('chatArea').scrollTop = $('chatArea').scrollHeight; }
-
-async function uploadToServer(file){
-  if(!APP.fallback.ready) startFallback();
-  await sleep(200);
-  if(!(APP.fallback.ws && APP.fallback.ws.readyState===WebSocket.OPEN)) throw new Error('fallback not connected');
-  const fd = new FormData(); fd.append('file', file);
-  const res = await fetch(APP.fallback.origin + '/upload', { method:'POST', body: fd });
-  if(!res.ok) throw new Error('upload failed ' + res.status);
-  return await res.json();
-}
-
-/* -------------------------
-   Call & screen share (same as earlier) with mic/cam toggles
-   ------------------------- */
-
-function attachLocalStream(stream){ APP.localStream=stream; try{ $('localVideo').srcObject = stream; }catch(e){ $('localVideo').src = URL.createObjectURL(stream); } }
-function attachRemoteStream(stream){ try{ $('remoteVideo').srcObject = stream; }catch(e){ $('remoteVideo').src = URL.createObjectURL(stream); } }
-
-$('callBtn').addEventListener('click', async ()=>{
-  const target = $('peerIdInput').value.trim();
-  if(!target && !APP.roomId) return alert('相手IDを入力、またはルームに参加してください');
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({ audio:true, video:true });
-    attachLocalStream(s);
-    // record call start
-    APP.callStart = { target: target || APP.roomId || 'room', start: Date.now() };
-    if(APP.roomId){
-      APP.members.forEach(pid => { try{ APP.peer.call(pid, s); }catch(e){ log('call member err', e); } });
-      appendSystem('ルームメンバーへ発信しました');
-    } else {
-      const call = APP.peer.call(target, s);
-      bindCall(call);
-    }
-  }catch(e){ alert('カメラ/マイク取得失敗: ' + e); }
-});
-
-function bindCall(call){
-  APP.currentCall = call;
-  try{ call.on('stream', stream => attachRemoteStream(stream)); }catch(e){}
-  try{ call.on('close', ()=> teardownCall()); }catch(e){}
-  try{ call.on('error', e=> { log('call err', e); teardownCall(); }); }catch(e){}
-}
-
-function formatDuration(ms){
-  const s = Math.floor(ms/1000); const m = Math.floor(s/60); const ss = s%60; return m+':'+String(ss).padStart(2,'0');
-}
-
-function teardownCall(){
-  try{ if(APP.currentCall) APP.currentCall.close(); }catch(e){}
-  // stop local stream tracks
-  if(APP.localStream) APP.localStream.getTracks().forEach(t=>t.stop());
-  APP.localStream = null;
-  APP.currentCall = null;
-  // record call end
-  if(APP.callStart){
-    const end = Date.now(); const dur = end - APP.callStart.start;
-    const entry = { target: APP.callStart.target, start: new Date(APP.callStart.start).toISOString(), durationMs: dur };
-    APP.callHistory.unshift(entry);
-    if(APP.callHistory.length>100) APP.callHistory.length = 100;
-    localStorage.setItem('sc_call_history', JSON.stringify(APP.callHistory));
-    renderCallHistory();
-    APP.callStart = null;
-  }
-}
-
-$('hangupBtn').addEventListener('click', ()=> teardownCall());
-
-$('shareScreenBtn').addEventListener('click', async ()=>{
-  try{
-    const s = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false });
-    APP.screenStream = s;
-    if(APP.currentCall && APP.currentCall.peerConnection){
-      const pc = APP.currentCall.peerConnection;
-      const sender = pc.getSenders().find(s=>s.track && s.track.kind==='video');
-      const track = s.getVideoTracks()[0];
-      if(sender && sender.replaceTrack) sender.replaceTrack(track);
-    } else $('localVideo').srcObject = s;
-    s.getVideoTracks()[0].addEventListener('ended', ()=> { appendSystem('画面共有終了'); if(APP.localStream) $('localVideo').srcObject = APP.localStream; APP.screenStream=null; });
-    appendSystem('画面共有開始');
-  }catch(e){ alert('screen share failed: ' + e); }
-});
-
-$('stopShareBtn').addEventListener('click', ()=> { if(APP.screenStream) APP.screenStream.getTracks().forEach(t=>t.stop()); APP.screenStream=null; if(APP.localStream) $('localVideo').srcObject = APP.localStream; });
-
-// mic / cam toggle
-$('muteAudioBtn').addEventListener('click', ()=>{
-  if(!APP.localStream){ alert('ローカルストリームがあ��ません'); return; }
-  const audioTracks = APP.localStream.getAudioTracks();
-  if(!audioTracks || audioTracks.length===0){ alert('オーディオトラックが見つかりません'); return; }
-  audioTracks.forEach(t=> t.enabled = !t.enabled);
-  $('muteAudioBtn').textContent = audioTracks[0].enabled? 'マイクOFF' : 'マイクON';
-});
-
-$('muteVideoBtn').addEventListener('click', ()=>{
-  if(!APP.localStream){ alert('ローカルストリームがありません'); return; }
-  const videoTracks = APP.localStream.getVideoTracks();
-  if(!videoTracks || videoTracks.length===0){ alert('ビデオトラックが見つかりません'); return; }
-  videoTracks.forEach(t=> t.enabled = !t.enabled);
-  $('muteVideoBtn').textContent = videoTracks[0].enabled? 'カメラOFF' : 'カメラON';
-});
-
-/* -------------------------
-   ICE diagnostic
-   ------------------------- */
-$('runDiag').addEventListener('click', ()=> runDiagnostic());
-
-async function runDiagnostic(){
-  const out = $('diagOut'); out.textContent = ''; $('diagSummary').textContent='running';
-  setStatus('ICE診断中...');
-  let cfg;
-  try{ cfg = JSON.parse($('rtcConfig').value); }catch(e){ out.textContent = 'rtcConfig JSON parse error'; setStatus('error'); return; }
-  const pc = new RTCPeerConnection(cfg);
-  const found = { host:0, srflx:0, relay:0, other:0 };
-  pc.onicecandidate = e => { if(e.candidate && e.candidate.candidate){ out.textContent += e.candidate.candidate + '\n'; const line=' '+e.candidate.candidate; if(line.includes(' typ host')) found.host++; else if(line.includes('typ srflx')) found.srflx++; else if(line.includes('typ relay')) found.relay++; else found.other++; } };
-  pc.createDataChannel('diag', { reliable:false });
-  try{ const offer = await pc.createOffer(); await pc.setLocalDescription(offer); }catch(e){ out.textContent += 'offer error '+e; }
-  await sleep(3500);
-  out.textContent += '\nSummary: host:'+found.host+' srflx:'+found.srflx+' relay:'+found.relay+' other:'+found.other+'\n';
-  $('diagSummary').textContent = `h:${found.host} s:${found.srflx} r:${found.relay}`;
-  setStatus('ICE診断完了');
-  try{ pc.close(); }catch(e){}
-}
-
-/* -------------------------
-   Fallback WebSocket handling tie-in
-   ------------------------- */
-// startFallback defined above
-
-/* -------------------------
-   small helpers
-   ------------------------- */
-function appendChat(who, text){
-  const el = document.createElement('div'); el.className = 'msg ' + (who==='me' ? 'me' : 'you'); el.innerHTML = '<div>' + escapeHtml(text) + '</div><div class="msg-meta">' + new Date().toLocaleTimeString() + '</div>';
-  $('chatArea').appendChild(el); $('chatArea').scrollTop = $('chatArea').scrollHeight;
-}
-function appendSystem(text){ const el=document.createElement('div'); el.className='msg you'; el.style.opacity=0.6; el.innerHTML='<div><em>'+escapeHtml(text)+'</em></div>'; $('chatArea').appendChild(el); $('chatArea').scrollTop=$('chatArea').scrollHeight; }
-
-/* export logs */
-$('exportLogs').addEventListener('click', ()=> {
-  const blob = new Blob([$('log').textContent], { type:'text/plain' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sc-logs-'+Date.now()+'.txt'; a.click(); setStatus('ログ出力');
-});
-
-/* Initial UI: set myId shown */
-$('myId').textContent = 'ID: ' + APP.myId;
-// hide regenerate id as peer id is fixed
-try{ $('regenerateId').style.display='none'; }catch(e){}
-
-/* Call history rendering */
-function renderCallHistory(){
-  const ul = $('callHistory'); ul.innerHTML='';
-  APP.callHistory.forEach(entry=>{
-    const li = document.createElement('li'); li.className='member';
-    li.innerHTML = `<div>${escapeHtml(String(entry.target))} <div class="small muted">${new Date(entry.start).toLocaleString()} (${formatDuration(entry.durationMs)})</div></div>`;
-    ul.appendChild(li);
-  });
-}
-renderCallHistory();
-$('clearCallHistory').addEventListener('click', ()=>{ APP.callHistory=[]; localStorage.removeItem('sc_call_history'); renderCallHistory(); });
-
-/* Settings modal handlers */
-$('settingsBtn').addEventListener('click', ()=>{ $('settingsModal').style.display='flex'; });
-$('closeSettings').addEventListener('click', ()=>{ $('settingsModal').style.display='none'; });
-$('startFallback').addEventListener('click', ()=> startFallback());
-$('stopFallback').addEventListener('click', ()=> { if(APP.fallback.ws) APP.fallback.ws.close(); });
-$('saveRtc').addEventListener('click', ()=>{ try{ APP.rtcConfig = JSON.parse($('rtcConfig').value); setStatus('RTC設定を更新しました'); createPeerWithFixedId(); }catch(e){ alert('RTC設定 JSON エラー: '+e); } });
-
-// login modal (dummy)
-function doLogin(provider){ const name = provider + '-' + Math.floor(Math.random()*9000+1000); $('displayName').textContent = name; $('loginModal').style.display='none'; document.getElementById('logoutBtn').classList.remove('hidden'); }
-$('loginMicrosoft').addEventListener('click', ()=> doLogin('Microsoft'));
-$('loginGoogle').addEventListener('click', ()=> doLogin('Google'));
-$('loginApple').addEventListener('click', ()=> doLogin('Apple'));
-$('signupBtn').addEventListener('click', ()=> doLogin('Signup'));
-$('logoutBtn').addEventListener('click', ()=>{ $('displayName').textContent='あなた'; $('logoutBtn').classList.add('hidden'); $('loginModal').style.display='flex'; });
-
-// show login modal at start
-$('loginModal').style.display='flex';
-
-/* End of file */
+function bootInvite(){const m=location.hash.match(/peer=(\d{6})/);if(m){setTimeout(()=>{$('friendBtn').click();setTimeout(()=>{$('peerField').value=m[1]},0)},150)}}
+addLog('INFO','Secure Chat boot',`Peer ID=${state.id}`);if(safeStore.get(LS.id,'')!==state.id)addLog('WARN','Peer ID persistence unavailable','localStorage is blocked or unavailable');addLog('INFO','SecureAI engine','embedded-local-v2');addLog('INFO','fallback mode',`enabled=${state.fallbackEnabled}; ports=${state.fallbackPorts.join(',')}`);addLog('INFO','WebRTC support',`${!!window.RTCPeerConnection}; getUserMedia=${!!navigator.mediaDevices?.getUserMedia}`);connectSignal();renderList();bootInvite();setTimeout(()=>monitorSecurity(),1500);
+window.addEventListener('beforeunload',()=>{try{state.ws?.close()}catch{}save()});
 </script>
 </body>
 </html>
