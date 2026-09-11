@@ -375,12 +375,6 @@ button{cursor:pointer}
 .btn.primary{background:var(--green);color:#fff}
 .btn.danger{background:#fee2e2;color:#991b1b}
 .btn.ghost{background:transparent}
-.ai-main-btn{min-width:156px;height:38px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;border-radius:11px}
-.app-version{position:fixed;right:7px;bottom:5px;z-index:20;font-size:9px;line-height:1;color:rgba(102,112,133,.58);pointer-events:none;user-select:none}
-.openai-note{border:1px solid #fde68a;background:#fffbeb;color:#854d0e;border-radius:12px;padding:9px;font-size:11px;line-height:1.55}
-.openai-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;font-size:11px;background:#eef2f7;color:#475467}
-.openai-status.ok{background:#dcfce7;color:#166534}
-.openai-status.bad{background:#fee2e2;color:#991b1b}
 .modal{
   display:none;
   position:fixed;
@@ -680,6 +674,47 @@ button{cursor:pointer}
     top:58px;
   }
 }
+
+.sc-version-corner{position:fixed;right:7px;bottom:5px;z-index:500;color:#98a2b3;font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.58;pointer-events:none;user-select:none}
+.ai-wide-btn{min-width:142px;justify-content:center;letter-spacing:.01em}
+.top-actions .ai-wide-btn{width:auto;height:38px;border-radius:12px;padding:0 14px;font-weight:800}
+.sticker-dock{display:none;background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 35px rgba(0,0,0,.08);padding:10px;max-height:290px;overflow:auto}
+.sticker-dock.show{display:block}
+.sticker-dock-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.sticker-dock-title{font-size:12px;font-weight:800}
+.sticker-grid-line{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.sticker-tile{border:0;background:transparent;border-radius:14px;padding:7px;min-height:74px;cursor:pointer;display:grid;place-items:center;transition:.15s transform,.15s background}
+.sticker-tile:hover{background:var(--surface2);transform:translateY(-1px)}
+.sticker-tile img{width:100%;height:88px;object-fit:contain;display:block}
+.sticker-empty{padding:18px 8px;text-align:center;color:var(--muted);font-size:12px}
+.sticker-create{display:flex;gap:7px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.sticker-create .btn{flex:none}
+.sticker-message-img{display:block;width:min(220px,60vw);max-height:220px;object-fit:contain;border-radius:14px}
+.ai-quick-examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.ai-quick-examples button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 9px;font-size:11px}
+.ai-kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:8px}
+.ai-kpi .card{padding:8px}
+.ai-kpi b{display:block;font-size:13px}
+.ai-kpi small{color:var(--muted)}
+@media(max-width:760px){.sticker-grid-line{grid-template-columns:repeat(3,minmax(0,1fr))}.sticker-dock{max-height:250px}.sticker-tile img{height:78px}}
+
+
+/* direct peer / profile / diagnostics */
+.peer-connect{margin:0 12px 10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}
+.peer-connect-row{display:flex;gap:7px;align-items:center}
+.peer-connect-row input{min-width:0;flex:1;height:38px;border:1px solid var(--line);border-radius:11px;padding:0 10px;background:var(--surface);color:var(--ink);outline:none}
+.peer-connect-row .btn{height:38px;white-space:nowrap}
+.peer-connect small{display:block;margin-top:6px;color:var(--muted);font-size:10px;line-height:1.45}
+.list-connect{display:inline-flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:5px 8px;font-size:11px;font-weight:800;color:var(--green2);cursor:pointer}
+.list-connect:hover{filter:brightness(.96)}
+.profile-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center}
+.profile-avatar{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#ede9fe);font-size:32px;font-weight:900;overflow:hidden}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.test-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.test-row:last-child{border-bottom:0}
+.test-detail{color:var(--muted);font-size:11px;text-align:right}
+.test-ok{color:#166534}.test-warn{color:#92400e}
+@media(max-width:760px){.peer-connect-row{gap:5px}.list-connect{padding:4px 6px}.profile-card{grid-template-columns:64px 1fr}.profile-avatar{width:64px;height:64px}}
 </style>
 </head>
 
@@ -692,7 +727,7 @@ button{cursor:pointer}
       <div class="logo">S</div>
       <div>
         <h1>Secure Chat</h1>
-        <small>Single-file P2P Messenger + AI</small>
+        <small>P2P Messenger + AI</small>
       </div>
     </div>
 
@@ -710,7 +745,7 @@ button{cursor:pointer}
       </div>
 
       <div class="my-actions">
-        <button class="btn primary ai-main-btn" id="openAiQuick">
+        <button class="btn primary ai-wide-btn" id="openAiQuick">
           🤖 SecureAI
         </button>
         <button class="btn" id="copyId">
@@ -719,10 +754,22 @@ button{cursor:pointer}
         <button class="btn" id="nameBtn">
           名前
         </button>
+        <button class="btn" id="profileBtn">
+          👤 プロフィール
+        </button>
         <button class="btn" id="inviteBtn">
           招待
         </button>
       </div>
+    </section>
+
+    <section class="peer-connect">
+      <div style="font-size:11px;color:#667085;margin-bottom:6px">直接P2P接続</div>
+      <div class="peer-connect-row">
+        <input id="directPeerId" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="相手のPeer ID（6桁）">
+        <button class="btn primary" id="directConnectBtn" type="button">接続</button>
+      </div>
+      <small>フレンド登録をせず、Peer IDだけで接続できます。</small>
     </section>
 
     <div class="search">
@@ -744,6 +791,13 @@ button{cursor:pointer}
       </button>
     </div>
 
+    <div class="direct-peer-side">
+      <div class="direct-peer-label">🔗 Peer IDで直接接続</div>
+      <div class="direct-peer-row">
+        <input id="directPeerSidebarInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="相手の6桁Peer ID">
+        <button class="btn primary" id="directPeerSidebarGo" type="button">接続</button>
+      </div>
+    </div>
     <div id="list" class="list"></div>
   </aside>
 
@@ -756,12 +810,12 @@ button{cursor:pointer}
 
         <div style="min-width:0">
           <h2 id="topName">Secure Chat</h2>
-          <small id="topStatus">初期化中…</small>
+          <small id="topStatus">接続確認中…</small>
         </div>
       </div>
 
       <div class="top-actions">
-        <button class="btn primary ai-main-btn" id="aiBtn" title="SecureAI">🤖 SecureAI</button>
+        <button class="iconbtn ai-wide-btn" id="aiBtn" title="SecureAI">🤖 SecureAI</button>
         <button class="iconbtn" id="settingsBtn" title="設定">⚙️</button>
         <button class="iconbtn" id="searchBtn" title="検索">🔎</button>
         <button class="iconbtn" id="backupBtn" title="バックアップ">💾</button>
@@ -770,6 +824,7 @@ button{cursor:pointer}
         <button class="iconbtn" id="groupBtn" title="グループ">👥</button>
         <button class="iconbtn" id="friendBtn" title="フレンド追加">＋</button>
         <button class="iconbtn" id="callBtn" title="ビデオ通話">📹</button>
+        <button class="iconbtn" id="testBtn" title="動作確認">🩺</button>
       </div>
 
     </header>
@@ -790,6 +845,8 @@ button{cursor:pointer}
         <div class="reply-pill" id="replyText"></div>
         <button class="btn" id="cancelReply">✕</button>
       </div>
+
+      <div id="stickerDock" class="sticker-dock" aria-label="ステッカー"></div>
 
       <div class="composer">
         <button class="btn" id="attachBtn" title="添付">📎</button>
@@ -845,7 +902,7 @@ button{cursor:pointer}
 </div>
 
 <div id="toast" class="toast"></div>
-<div class="app-version">v5.1</div>
+<div class="sc-version-corner" aria-hidden="true">v5.1</div>
 
 <script>
 'use strict';
@@ -1153,6 +1210,9 @@ for(
   DEFAULT_FEATURES[key]=false;
 }
 
+// Product defaults: every feature is active. Only richText/translation remain user-togglable in settings.
+for(const key of Object.keys(DEFAULT_FEATURES)) DEFAULT_FEATURES[key]=true;
+
 /* =========================================================
    State
    ========================================================= */
@@ -1268,9 +1328,6 @@ const state={
     aiModelUrl:'',
     aiTemperature:.55,
     aiMaxTokens:512,
-    openAIEnabled:false,
-    openAIModel:'gpt-5',
-    openAIEndpoint:'https://api.openai.com/v1/responses',
 
     localModelName:'SecureChat Local Model',
     localModelFormat:'webgpu-binary',
@@ -2162,6 +2219,11 @@ function connectSignal(){
             state.peerServer.fallbackEnabled
           ){
             next();
+          }else{
+            state.wsReady=false;
+            setTopStatus('シグナリング接続タイムアウト');
+            addLog('WARN','WebSocket timeout',`port=${port}`);
+            monitorSecurity();
           }
         },
         Math.max(
@@ -3608,12 +3670,6 @@ async function addFriendDialog(
     return;
   }
 
-  await addFriend(
-    id,
-    name||id,
-    true
-  );
-
   try{
     await sendControlObject(
       id,
@@ -3622,17 +3678,15 @@ async function addFriendDialog(
         name:state.name
       }
     );
-  }catch{}
+    toast(`👥 ${name||id} にフレンド申請を送信しました`);
+  }catch(e){
+    addLog('WARN','friend request send',`${id}: ${e.message}`);
+    toast(`フレンド申請を送信できませんでした: ${e.message}`);
+    return;
+  }
 
-  try{
-    await ensureDataConnection(
-      id
-    );
-  }catch{}
-
-  selectPeer(
-    id
-  );
+  try{ await ensureDataConnection(id); }catch{}
+  selectPeer(id);
 }
 
 /* =========================================================
@@ -5294,14 +5348,6 @@ const LocalAI={
       return command;
     }
 
-    if(state.settings.openAIEnabled && state.settings.aiApiKey){
-      try{
-        return await this.openAI(question,imageData);
-      }catch(e){
-        addLog('WARN','OpenAI failed',e.message);
-      }
-    }
-
     if(
       state.settings.aiEndpoint
     ){
@@ -5323,70 +5369,6 @@ const LocalAI={
       question,
       imageData
     );
-  },
-
-  async openAI(question,imageData=''){
-    const context=retrieveAI(question,10);
-    const history=state.aiHistory.slice(-16).map(m=>({
-      role:m.role==='assistant'?'assistant':'user',
-      content:String(m.text||'')
-    }));
-
-    const instructions=[
-      'あなたはSecure ChatのAIアシスタントです。',
-      '日本語で親切・簡潔・正確に回答してください。',
-      '「使い方」「操作方法」「ヘルプ」「どうやって使う」「やり方」「何ができる」などの質問にはSecure Chatの現在のUIと機能を優先して説明してください。',
-      'Peer ID、フレンド、チャット、通話、ファイル送信、設定、AI設定などの質問にも具体的に答えてください。',
-      'アプリの状態は与えられたローカル情報だけを根拠にし、見えていない事実を作らないでください。',
-      'APIキー、共有パスフレーズなどの秘密情報を回答に再掲しないでください。',
-      context.length?'ローカル関連情報:\n'+context.map(x=>x.text).join('\n---\n'):'ローカル関連情報はありません。'
-    ].join('\n');
-
-    const input=[
-      ...history,
-      {
-        role:'user',
-        content:imageData
-          ?[
-              {type:'input_text',text:question||'この画像を説明してください。'},
-              {type:'input_image',image_url:imageData}
-            ]
-          :String(question||'')
-      }
-    ];
-
-    const response=await fetch(
-      state.settings.openAIEndpoint||'https://api.openai.com/v1/responses',
-      {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'Authorization':'Bearer '+state.settings.aiApiKey
-        },
-        body:JSON.stringify({
-          model:state.settings.openAIModel||'gpt-5',
-          instructions,
-          input,
-          temperature:Number(state.settings.aiTemperature)||0.55,
-          max_output_tokens:Number(state.settings.aiMaxTokens)||512,
-          store:false
-        })
-      }
-    );
-
-    if(!response.ok){
-      let detail='';
-      try{const e=await response.json();detail=e?.error?.message||'';}catch{}
-      throw new Error('OpenAI HTTP '+response.status+(detail?': '+detail:''));
-    }
-
-    const data=await response.json();
-    const out=data?.output_text ||
-      (Array.isArray(data?.output)
-        ?data.output.flatMap(x=>x?.content||[]).map(x=>x?.text||'').filter(Boolean).join('\n')
-        :'');
-    if(!out)throw new Error('OpenAI response missing');
-    return String(out);
   },
 
   async remote(
@@ -5520,21 +5502,6 @@ const LocalAI={
         question,
         6
       );
-
-    if(/使い方|つかいかた|操作方法|操作の仕方|どう使|どうやって使|使いかた|ヘルプ|help|やり方|何ができる|できること|機能一覧/.test(q)){
-      return [
-        '📘 Secure Chatの使い方',
-        '',
-        '1. フレンド追加：相手の6桁Peer IDを入力して追加します。',
-        '2. チャット：相手を選ぶとP2Pチャットを開始できます。',
-        '3. 通話：相手を選んで📹からWebRTC通話を開始します。',
-        '4. ファイル：📎からファイル送信機能をONにしてP2P送信します。',
-        '5. AI：🤖 SecureAIで「使い方を教えて」「状態を教えて」などと質問できます。',
-        '6. 設定：⚙️から接続、AI、外観、追加機能を変更できます。',
-        '',
-        '「通話のやり方」「Peer IDって何？」「AI設定を教えて」などの聞き方でもOKです。'
-      ].join('\n');
-    }
 
     if(
       /こんにちは|hello|やあ/.test(q)
@@ -5739,13 +5706,7 @@ function getAIStatus(){
       !!navigator.gpu,
 
     model:
-      state.modelMeta,
-
-    openAI:{
-      enabled:!!state.settings.openAIEnabled,
-      configured:!!state.settings.aiApiKey,
-      model:state.settings.openAIModel||'gpt-5'
-    }
+      state.modelMeta
   };
 }
 
@@ -6075,14 +6036,7 @@ function openAI(){
       Secure Chatの現在状態、ローカルAIデータベース、
       WebGPUモデル状態を確認できます。
       外部LLM Endpointは設定したときだけ使用します。
-      「使い方教えて」「操作方法」「ヘルプ」などにも対応します。
     </p>
-
-    <div class="openai-note">
-      <b>💬 OpenAI接続</b>
-      <span id="aiOpenAIStatus" class="openai-status">未接続</span>
-      <div style="margin-top:4px">設定でOpenAI APIをONにすると、この画面から設定したモデルへ質問できます。</div>
-    </div>
 
     <div class="ai-layout">
 
@@ -6113,10 +6067,6 @@ function openAI(){
 
           <button class="btn" id="aiStatus">
             状態
-          </button>
-
-          <button class="btn" id="aiHowTo">
-            📘 使い方
           </button>
 
           <button class="btn" id="aiMemory">
@@ -6263,29 +6213,10 @@ function openAI(){
       }
     };
 
-  const aiOpenState=$('aiOpenAIStatus');
-  if(aiOpenState){
-    if(state.settings.openAIEnabled && state.settings.aiApiKey){
-      aiOpenState.textContent='接続設定ON · '+(state.settings.openAIModel||'gpt-5');
-      aiOpenState.className='openai-status ok';
-    }else{
-      aiOpenState.textContent='未接続';
-      aiOpenState.className='openai-status';
-    }
-  }
-
   $('aiStatus').onclick=
     ()=>{
       $('aiInput').value=
         '状態を教えて';
-
-      askAI();
-    };
-
-  $('aiHowTo').onclick=
-    ()=>{
-      $('aiInput').value=
-        'Secure Chatの使い方を教えて';
 
       askAI();
     };
@@ -6935,32 +6866,18 @@ function showModelProgress(
    ========================================================= */
 
 function featureCardsHTML(){
-  return Object.entries(
-    FEATURE_META
-  )
-  .map(
-    ([key,meta])=>{
-      const checked=
-        featureOn(key);
-
-      return `
-        <div class="feature-card">
-          <label>
-            <input
-              type="checkbox"
-              data-feature="${esc(key)}"
-              ${checked?'checked':''}
-            >
-            <span>
-              <b>${esc(meta[0])}</b>
-              <small>${esc(meta[1])}</small>
-            </span>
-          </label>
-        </div>
-      `;
-    }
-  )
-  .join('');
+  const keys=['richText','translation'];
+  return keys.map(key=>{
+    const meta=FEATURE_META[key];
+    const checked=featureOn(key);
+    return `
+      <div class="feature-card">
+        <label>
+          <input type="checkbox" data-feature="${esc(key)}" ${checked?'checked':''}>
+          <span><b>${esc(meta[0])}</b><small>${esc(meta[1])}</small></span>
+        </label>
+      </div>`;
+  }).join('');
 }
 
 async function refreshGPUState(){
@@ -7121,58 +7038,28 @@ function openSettings(
 
     </div>
 
-    <h4>🤖 SecureAI / OpenAI</h4>
+    <h4>🤖 SecureAI</h4>
 
-    <div class="card">
-      <div class="field" style="margin-top:0">
-        <label>
-          <input id="openAIEnabled" type="checkbox">
-          OpenAI APIへ接続する
-        </label>
-      </div>
-
-      <div class="openai-note" style="margin-top:8px">
-        <b>⚠️ APIキーの注意</b><br>
-        この単一HTMLから直接APIを呼ぶ方式は、ブラウザ上でAPIキーを扱うため安全な本番構成ではありません。
-        公開・共有するHTMLにはAPIキーを入れず、必要なら自分のバックエンド経由にしてください。
-      </div>
-
-      <div class="grid2" style="margin-top:8px">
-        <div class="field">
-          <label>OpenAI API Key</label>
-          <input id="aiApiKey" type="password" autocomplete="off" placeholder="sk-...">
-        </div>
-
-        <div class="field">
-          <label>OpenAI Model</label>
-          <input id="openAIModel" placeholder="gpt-5">
-        </div>
-      </div>
+    <div class="grid2">
 
       <div class="field">
-        <label>OpenAI Responses API Endpoint</label>
-        <input id="openAIEndpoint" placeholder="https://api.openai.com/v1/responses">
-      </div>
-
-      <div class="actions" style="justify-content:flex-start">
-        <span id="openAIStatus" class="openai-status">未設定</span>
-        <button class="btn" id="testOpenAI">🔌 接続テスト</button>
-      </div>
-    </div>
-
-    <div class="grid2" style="margin-top:10px">
-      <div class="field">
-        <label>OpenAI互換 Endpoint（任意）</label>
+        <label>LLM Endpoint</label>
         <input
           id="aiEndpoint"
-          placeholder="OpenAI互換APIを使う場合"
+          placeholder="任意のOpenAI互換Endpoint等"
         >
       </div>
 
       <div class="field">
-        <label>互換 Model</label>
+        <label>Model</label>
         <input id="aiModel">
       </div>
+
+    </div>
+
+    <div class="field">
+      <label>API Key</label>
+      <input id="aiApiKey" type="password">
     </div>
 
     <div class="grid2">
@@ -7396,77 +7283,6 @@ function openSettings(
   $('aiMaxTokens').value=
     state.settings.aiMaxTokens;
 
-  $('openAIEnabled').checked=
-    !!state.settings.openAIEnabled;
-
-  $('openAIModel').value=
-    state.settings.openAIModel||'gpt-5';
-
-  $('openAIEndpoint').value=
-    state.settings.openAIEndpoint||'https://api.openai.com/v1/responses';
-
-  const updateOpenAIStatus=()=>{
-    const e=$('openAIStatus');
-    if(!e)return;
-    const key=$('aiApiKey').value.trim();
-    if(state.settings.openAIEnabled && key){
-      e.textContent='設定済み · '+($('openAIModel').value.trim()||'gpt-5');
-      e.className='openai-status ok';
-    }else if(key){
-      e.textContent='キー入力済み · OFF';
-      e.className='openai-status';
-    }else{
-      e.textContent='未設定';
-      e.className='openai-status';
-    }
-  };
-  updateOpenAIStatus();
-  $('openAIEnabled').onchange=updateOpenAIStatus;
-  $('openAIModel').oninput=updateOpenAIStatus;
-  $('aiApiKey').oninput=updateOpenAIStatus;
-
-  $('testOpenAI').onclick=async()=>{
-    const key=$('aiApiKey').value.trim();
-    const model=$('openAIModel').value.trim()||'gpt-5';
-    const endpoint=$('openAIEndpoint').value.trim()||'https://api.openai.com/v1/responses';
-    const status=$('openAIStatus');
-    if(!key){
-      status.textContent='APIキーが必要';
-      status.className='openai-status bad';
-      toast('OpenAI APIキーを入力してください');
-      return;
-    }
-    status.textContent='接続テスト中…';
-    status.className='openai-status';
-    try{
-      const r=await fetch(endpoint,{
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'Authorization':'Bearer '+key
-        },
-        body:JSON.stringify({
-          model,
-          input:'Secure Chat接続テスト。OKとだけ答えてください。',
-          max_output_tokens:16,
-          store:false
-        })
-      });
-      if(!r.ok){
-        let msg='';
-        try{const x=await r.json();msg=x?.error?.message||'';}catch{}
-        throw new Error('HTTP '+r.status+(msg?': '+msg:''));
-      }
-      status.textContent='接続成功 · '+model;
-      status.className='openai-status ok';
-      toast('OpenAI接続テスト成功');
-    }catch(e){
-      status.textContent='接続失敗';
-      status.className='openai-status bad';
-      toast('OpenAI接続失敗: '+e.message);
-    }
-  };
-
   $('aiAllowControl').checked=
     state.settings.aiAllowControl;
 
@@ -7597,17 +7413,6 @@ function openSettings(
             )||.55
           )
         );
-
-      state.settings.openAIEnabled=
-        $('openAIEnabled').checked;
-
-      state.settings.openAIModel=
-        $('openAIModel').value.trim()||
-        'gpt-5';
-
-      state.settings.openAIEndpoint=
-        $('openAIEndpoint').value.trim()||
-        'https://api.openai.com/v1/responses';
 
       state.settings.aiMaxTokens=
         Math.max(
@@ -10506,6 +10311,7 @@ function renderList(){
                   ?'<span class="pill ok">P2P</span>'
                   :''
               }
+              <span class="list-connect" data-connect-peer="${esc(f.id)}">接続</span>
             </button>
             `
         ).join('')
@@ -10552,6 +10358,8 @@ function renderList(){
                   )}
                 </p>
               </span>
+
+              <span class="list-connect" data-connect-peer="${esc(call.peer)}">接続</span>
             </button>
             `
         ).join('')
@@ -10773,6 +10581,21 @@ function renderList(){
             selectPeer(
               button.dataset.peer
             );
+          };
+      }
+    );
+
+  list
+    .querySelectorAll(
+      '[data-connect-peer]'
+    )
+    .forEach(
+      button=>{
+        button.onclick=
+          async e=>{
+            e.preventDefault();
+            e.stopPropagation();
+            await connectDirectPeer(button.dataset.connectPeer);
           };
       }
     );
@@ -11605,6 +11428,15 @@ $('openAiQuick').onclick=
 $('nameBtn').onclick=
   openName;
 
+$('profileBtn').onclick=
+  openProfileSettings;
+
+$('directConnectBtn').onclick=
+  ()=>connectDirectPeer();
+
+$('testBtn').onclick=
+  openSelfTest;
+
 $('copyId').onclick=
   async()=>{
     const ok=
@@ -11960,7 +11792,7 @@ async function boot(){
   addLog(
     'INFO',
     'Secure Chat boot',
-    `version=${APP.version}; peer=${state.id}`
+    `peer=${state.id}`
   );
 
   addLog(
@@ -12119,6 +11951,278 @@ boot();
 
 </script>
 
+<script>
+(function(){
+  'use strict';
+
+  // Keep every non-settings feature enabled by default, while preserving only two toggles in Settings.
+  const LOCKED_ON=['reactions','customEmoji','stickers','mentions','messageSearch','files','screenShare','voiceChannels','aiDatabase','aiImage','aiVoice','aiMemory','backup','browserNotify','notificationSound','wakeLock','autoReconnect','advancedDiagnostics','microsoftLogin','localWebGPU','aiToolControl','pythonBridge','groups'];
+  for(const k of LOCKED_ON) state.settings.features[k]=true;
+  if(state.settings.features.richText===undefined) state.settings.features.richText=true;
+  if(state.settings.features.translation===undefined) state.settings.features.translation=true;
+  saveSettings();
+
+  // ---------------- Sticker UX: LINE-like dock, not just text input ----------------
+  function stickerDock(){return $('stickerDock')}
+  function renderStickerDock(){
+    const dock=stickerDock(); if(!dock)return;
+    const stickers=Array.isArray(state.stickers)?state.stickers:[];
+    dock.innerHTML=`
+      <div class="sticker-dock-head">
+        <div class="sticker-dock-title">🩷 ステッカー</div>
+        <button class="btn" type="button" id="stickerDockClose">閉じる</button>
+      </div>
+      <div class="sticker-grid-line">
+        ${stickers.length?stickers.map(s=>`
+          <button class="sticker-tile" type="button" data-sticker-fast="${esc(s.id)}" title="${esc(s.name||'ステッカー')}">
+            <img src="${esc(s.dataUrl)}" alt="${esc(s.name||'ステッカー')}">
+          </button>`).join(''):`<div class="sticker-empty" style="grid-column:1/-1">まだステッカーがありません。下の「作る」から追加できます。</div>`}
+      </div>
+      <div class="sticker-create">
+        <button class="btn primary" type="button" id="stickerCreateFast">＋ 作る</button>
+        <div class="subtle">タップするとそのまま大きなステッカーとして送信します。</div>
+      </div>`;
+    $('stickerDockClose').onclick=()=>dock.classList.remove('show');
+    $('stickerCreateFast').onclick=()=>{
+      $('fileInput').accept='image/*'; $('fileInput').multiple=false; $('fileInput').dataset.mode='sticker'; $('fileInput').click();
+    };
+    dock.querySelectorAll('[data-sticker-fast]').forEach(btn=>btn.onclick=async()=>{
+      const st=state.stickers.find(x=>x.id===btn.dataset.stickerFast);
+      if(st) await sendSticker(st);
+    });
+  }
+  function toggleStickerDock(){
+    const dock=stickerDock(); if(!dock)return;
+    renderStickerDock();
+    dock.classList.toggle('show');
+  }
+  window.toggleStickerDock=toggleStickerDock;
+
+  // Replace the generic sticker action with the dock.
+  const oldRenderDynamicUI=window.renderDynamicUI;
+  if(typeof oldRenderDynamicUI==='function'){
+    window.renderDynamicUI=function(){
+      oldRenderDynamicUI();
+      const bar=$('actionbar');
+      if(bar && !bar.querySelector('[data-action="sticker"]')){
+        const btn=document.createElement('button'); btn.type='button'; btn.dataset.action='sticker'; btn.textContent='🩷 ステッカー';
+        btn.onclick=toggleStickerDock; bar.appendChild(btn);
+      } else {
+        const b=bar?.querySelector('[data-action="sticker"]'); if(b)b.onclick=toggleStickerDock;
+      }
+      const eb=$('emojiBtn');
+      if(eb){eb.textContent='😀'; eb.title='絵文字';}
+    };
+  }
+  if($('actionbar')) setTimeout(()=>renderDynamicUI(),0);
+
+  // Add a dedicated sticker button beside the emoji button without breaking the existing composer.
+  if(!$('stickerBtnComposer')){
+    const eb=$('emojiBtn');
+    if(eb){
+      const b=document.createElement('button'); b.className='btn'; b.id='stickerBtnComposer'; b.type='button'; b.title='ステッカー'; b.textContent='🩷'; b.onclick=toggleStickerDock;
+      eb.insertAdjacentElement('afterend',b);
+    }
+  }
+
+  // Improve sticker rendering in message bubbles.
+  const oldRenderMessageBody=window.renderMessageBody;
+  if(typeof oldRenderMessageBody==='function'){
+    window.renderMessageBody=function(message){
+      if(message?.type==='sticker' && message?.attachment?.dataUrl){
+        return `<div class="msg-content"><img class="sticker-message-img" src="${esc(message.attachment.dataUrl)}" alt="${esc(message.attachment.name||'ステッカー')}"></div>`;
+      }
+      return oldRenderMessageBody(message);
+    };
+  }
+
+  // ---------------- Screen share reliability ----------------
+  async function enhancedShareScreen(){
+    if(!state.callPeer){ toast('先にビデオ通話を開始してください'); return; }
+    const getDM=navigator.mediaDevices?.getDisplayMedia;
+    if(typeof getDM!=='function'){ toast('このChrome環境では画面共有APIが利用できません'); addLog('WARN','screen share unsupported','getDisplayMedia unavailable'); return; }
+    try{
+      const stream=await getDM.call(navigator.mediaDevices,{video:{displaySurface:'browser'},audio:false});
+      const track=stream.getVideoTracks()[0];
+      const mediaConn=state.connections.get?.(state.callPeer);
+      let replaced=false;
+      if(mediaConn?.pc){
+        const sender=mediaConn.pc.getSenders().find(x=>x.track?.kind==='video');
+        if(sender){await sender.replaceTrack(track); replaced=true;}
+      }
+      if(!replaced){
+        for(const c of state.connections.values()){
+          if(c.kind==='media' && c.remote===state.callPeer){
+            const sender=c.pc.getSenders().find(x=>x.track?.kind==='video');
+            if(sender){await sender.replaceTrack(track); replaced=true;}
+          }
+        }
+      }
+      if(!replaced){track.stop(); throw new Error('映像送信経路が見つかりません');}
+      $('localVideo')?.srcObject && ($('localVideo').srcObject=stream);
+      track.onended=()=>{
+        const camera=state.localStream?.getVideoTracks?.()[0];
+        const c=state.connections.get?.(state.callPeer);
+        const sender=c?.pc?.getSenders?.().find(x=>x.track?.kind==='video');
+        if(sender && camera) sender.replaceTrack(camera).catch(()=>{});
+        if($('localVideo') && state.localStream) $('localVideo').srcObject=state.localStream;
+        toast('🖥️ 画面共有を終了しました');
+      };
+      toast('🖥️ 画面共有を開始しました');
+    }catch(e){ addLog('WARN','screen share',e.message); toast('画面共有できませんでした: '+e.message); }
+  }
+  window.shareScreen=enhancedShareScreen;
+  $('shareBtn')?.addEventListener('click',e=>{e.preventDefault(); e.stopPropagation(); enhancedShareScreen();},true);
+
+  // ---------------- AI knowledge base / help ----------------
+  const helpRules=[
+    [/使い方|使用方法|操作方法|どうやって使|使う方法|ヘルプ|help|使いかた|操作を教/, 'help'],
+    [/フレンド|友達|友だち|追加して|peer ?id/, 'friend'],
+    [/通話|電話|ビデオ通話|音声通話/, 'call'],
+    [/画面共有|スクリーンシェア|share screen/, 'share'],
+    [/ステッカー|スタンプ/, 'sticker'],
+    [/絵文字|emoji/, 'emoji'],
+    [/ファイル|添付|送信できる|データ送信/, 'file'],
+    [/検索|探したい|履歴/, 'search'],
+    [/バックアップ|復元|保存/, 'backup'],
+    [/設定|テーマ|ダークモード/, 'settings'],
+    [/peer id|自分のid|自分のＩＤ/, 'id'],
+    [/セキュリティ|安全|暗号|暗号化/, 'security'],
+    [/AI|chatgpt|openai/, 'ai']
+  ];
+  function appHelp(kind){
+    const base={
+      help:`📘 Secure Chatの使い方\n\n① 相手の6桁Peer IDを「＋ フレンド」から追加\n② 共有パスフレーズが一致していればP2P通信を確立\n③ チャット欄からメッセージを送信\n④ 📎でファイル、🩷でステッカー、😀で絵文字\n⑤ 📹でビデオ通話。通話中は🖥️で画面共有\n⑥ 🤖 SecureAIでは状態確認・履歴検索・質問・要約などができます\n⑦ ⚙️ではテーマ、P2P接続、AI接続などを管理\n\n困ったら「今の状態」「ICE診断」「OpenAI接続」などと聞いてください。`,
+      friend:`👥 フレンド追加\n\n「＋」→相手の6桁Peer ID→名前（任意）→「追加して接続」。招待リンクからPeer IDを自動入力することもできます。`,
+      call:`📹 通話\n\n相手を選んでビデオ通話を開始します。通話中は🎙️マイク、📷カメラ、🖥️画面共有、☀️画面維持、☎終了を使えます。`,
+      share:`🖥️ 画面共有\n\nビデオ通話中に画面共有を押すとChromeの共有対象選択が開きます。共有を停止するとカメラ映像へ戻します。`,
+      sticker:`🩷 ステッカー\n\n入力欄の🩷を押すとステッカーパネルが開きます。登録済みのステッカーをタップすると、大きなステッカー画像としてそのまま送信できます。「＋ 作る」から画像をステッカーとして登録できます。`,
+      emoji:`😀 絵文字\n\n入力欄の😀から絵文字を選べます。カスタム絵文字も登録できます。`,
+      file:`📎 ファイル共有\n\n入力欄の📎からファイルを選択してP2P送信します。転送可能サイズは設定値に従います。`,
+      search:`🔎 検索\n\nサイドバー検索はチャット・フレンドを絞り込みます。詳細検索では履歴を横断検索できます。AIにも「○○を検索して」と聞けます。`,
+      backup:`💾 バックアップ\n\n履歴・設定・AIメモリなどをバックアップして、あとで復元できます。機密情報を含むバックアップは安全に保管してください。`,
+      settings:`⚙️ 設定\n\n外観・P2P接続・ファイル転送・AI接続などを管理します。機能のON/OFFは基本的に自動で有効化されています。リッチテキストと翻訳だけは設定で切り替えできます。`,
+      id:`🆔 Peer ID\n\n左側の「あなたのPeer ID」に表示される6桁数字がこの端末のIDです。更新しても端末内の保存値を再利用します。`,
+      security:`🔐 セキュリティ\n\nWebRTC/DTLSとアプリ層のAES-GCMを使い、接続・ICE状態も監視します。ただしブラウザだけで盗聴や傍受を断定することはできません。`,
+      ai:`🤖 AI\n\nSecureAIはローカルDBから関連情報を検索し、状態確認、使い方、履歴、要約などを回答します。OpenAI APIキーを設定した場合は、外部AIへ質問を送信できます。APIキーは共有しないでください。`
+    }; return base[kind]||base.help;
+  }
+
+  function classifyHelp(q){
+    const n=aiNormalize(q); for(const [rx,k] of helpRules) if(rx.test(n)) return k; return '';
+  }
+
+  const oldFallback=LocalAI.fallback.bind(LocalAI);
+  LocalAI.fallback=function(question,imageData=''){
+    const k=classifyHelp(question); if(k) return appHelp(k);
+    return oldFallback(question,imageData);
+  };
+
+  // Expand RAG scoring using recency, phrase hits and memory priority.
+  const oldRetrieveAI=window.retrieveAI;
+  if(typeof oldRetrieveAI==='function'){
+    window.retrieveAI=function(query,limit=8){
+      if(!featureOn('aiDatabase')) return [];
+      const nq=aiNormalize(query); const toks=[...new Set(aiTokens(query))]; const nowTs=Date.now();
+      return state.aiIndex.map(entry=>{
+        let score=0; const text=aiNormalize(entry.text||'');
+        if(nq && text.includes(nq)) score+=7;
+        for(const t of toks){if(entry.tokens?.includes(t))score+=3;if(text.includes(t))score+=1;}
+        const age=Math.max(0,nowTs-(entry.time||0)); score+=Math.max(0,2-Math.log10(1+age/86400000));
+        if(entry.kind==='memory') score+=1.4;
+        return {entry,score};
+      }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,Math.max(1,limit)).map(x=>x.entry);
+    };
+  }
+
+  // ---------------- OpenAI Responses API client ----------------
+  const OPENAI_ENDPOINT='https://api.openai.com/v1/responses';
+  state.settings.openaiEnabled=!!state.settings.openaiEnabled;
+  if(typeof state.settings.openaiModel!=='string') state.settings.openaiModel=state.settings.aiModel||'gpt-5-mini';
+  if(typeof state.settings.openaiApiKey!=='string') state.settings.openaiApiKey=state.settings.aiApiKey||'';
+  if(typeof state.settings.openaiEndpoint!=='string') state.settings.openaiEndpoint=OPENAI_ENDPOINT;
+
+  function aiSystemPrompt(){
+    const status=getAIStatus();
+    const ctx=retrieveAI('',12).map(x=>x.text).slice(0,12);
+    return [
+      'あなたはSecure Chatの組み込みAIアシスタントです。',
+      '日本語で自然に回答してください。',
+      'アプリの事実が必要な場合は与えられた状態・ローカルDBを優先し、不明なことは推測しないでください。',
+      '使い方の質問には具体的な画面操作を手順で説明してください。',
+      '現在のアプリ状態:',JSON.stringify(status),
+      '関連ローカルコンテキスト:',ctx.join('\n---\n')||'(なし)'
+    ].join('\n');
+  }
+
+  async function openAIResponse(question,imageData=''){
+    const key=state.settings.openaiApiKey||state.settings.aiApiKey;
+    if(!key) throw new Error('OpenAI APIキーが設定されていません');
+    const model=state.settings.openaiModel||state.settings.aiModel||'gpt-5-mini';
+    const content=[{type:'input_text',text:question||'この画像について説明してください。'}];
+    if(imageData) content.push({type:'input_image',image_url:imageData,detail:'auto'});
+    const response=await fetch(state.settings.openaiEndpoint||OPENAI_ENDPOINT,{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model,input:[{role:'system',content:[{type:'input_text',text:aiSystemPrompt()}]},{role:'user',content}],store:false})
+    });
+    const raw=await response.text(); let data={}; try{data=JSON.parse(raw);}catch{}
+    if(!response.ok) throw new Error(data?.error?.message||`OpenAI HTTP ${response.status}`);
+    const texts=[];
+    if(typeof data.output_text==='string') texts.push(data.output_text);
+    for(const item of (data.output||[])) for(const c of (item.content||[])) if(typeof c.text==='string') texts.push(c.text);
+    const out=texts.join('\n').trim(); if(!out) throw new Error('OpenAIの回答が空でした'); return out;
+  }
+  window.openAIResponse=openAIResponse;
+
+  const baseGenerate=LocalAI.generate.bind(LocalAI);
+  LocalAI.generate=async function(question,imageData=''){
+    const k=classifyHelp(question); if(k) return appHelp(k);
+    if(state.settings.openaiEnabled && (state.settings.openaiApiKey||state.settings.aiApiKey)){
+      try{return await openAIResponse(question,imageData);}catch(e){addLog('WARN','OpenAI failed',e.message);}
+    }
+    return baseGenerate(question,imageData);
+  };
+
+  // Enrich AI window with quick actions and connection state.
+  const baseOpenAI=window.openAI;
+  if(typeof baseOpenAI==='function'){
+    window.openAI=function(){
+      baseOpenAI();
+      setTimeout(()=>{
+        const input=$('aiInput'); if(!input)return;
+        const box=document.createElement('div'); box.className='ai-quick-examples';
+        ['使い方教えて','今の状態を教えて','画面共有の使い方','ステッカーの使い方','OpenAI接続を確認'].forEach(t=>{
+          const b=document.createElement('button'); b.type='button'; b.textContent=t; b.onclick=()=>{input.value=t;$('aiAsk')?.click();}; box.appendChild(b);
+        });
+        input.insertAdjacentElement('afterend',box);
+        const parent=input.closest('.ai-layout')?.querySelector('.card');
+        if(parent){const k=document.createElement('div');k.className='ai-kpi';k.innerHTML=`<div class="card"><b>${state.aiIndex.length}</b><small>AI Index</small></div><div class="card"><b>${state.aiMemory.length}</b><small>AI Memory</small></div>`; parent.appendChild(k)}
+      },0);
+    };
+  }
+
+  // OpenAI settings: dedicated key/model/test card, without exposing the key value elsewhere.
+  const originalOpenSettings=window.openSettings;
+  function addOpenAISettingsCard(){
+    const panel=$('panel'); if(!panel || $('openaiSettingsCard')) return;
+    const card=document.createElement('div'); card.className='card'; card.id='openaiSettingsCard'; card.style.marginTop='12px';
+    card.innerHTML=`<b>🤖 OpenAI / ChatGPT 接続</b><div class="subtle" style="margin-top:4px">この端末からOpenAI APIへ直接接続します。APIキーは他人と共有しないでください。</div><div class="field"><label><input id="openaiEnabled" type="checkbox" ${state.settings.openaiEnabled?'checked':''}> OpenAIを優先して使う</label></div><div class="field"><label>API Key</label><input id="openaiApiKey" type="password" autocomplete="off" placeholder="sk-…"></div><div class="field"><label>Model</label><input id="openaiModel" value="${esc(state.settings.openaiModel||'gpt-5-mini')}"></div><div class="actions" style="justify-content:flex-start"><button class="btn" id="openaiTest" type="button">接続テスト</button><span id="openaiStatus" class="pill warn">未接続</span></div>`;
+    const aiHeading=[...panel.querySelectorAll('h4')].find(x=>x.textContent.includes('SecureAI'));
+    (aiHeading?.parentElement||panel).appendChild(card);
+    $('openaiApiKey').value=state.settings.openaiApiKey||'';
+    $('openaiEnabled').onchange=()=>{state.settings.openaiEnabled=$('openaiEnabled').checked;saveSettings();};
+    $('openaiModel').onchange=()=>{state.settings.openaiModel=$('openaiModel').value.trim()||'gpt-5-mini';saveSettings();};
+    $('openaiApiKey').onchange=()=>{state.settings.openaiApiKey=$('openaiApiKey').value.trim();saveSettings();};
+    $('openaiTest').onclick=async()=>{const st=$('openaiStatus'); st.textContent='接続中…'; st.className='pill warn'; try{await openAIResponse('Secure Chatの接続テストです。OKと答えてください。');st.textContent='接続OK';st.className='pill ok';toast('OpenAI接続OK');}catch(e){st.textContent='失敗';st.className='pill bad';toast('OpenAI接続失敗: '+e.message);}};
+  }
+  if(typeof originalOpenSettings==='function') window.openSettings=function(f){originalOpenSettings(f);setTimeout(addOpenAISettingsCard,0)};
+
+  // Keep version out of logs/status text.
+  try{addLog('INFO','AI enhancement','help rules + RAG + OpenAI Responses API');}catch{}
+
+})();
+</script>
+
 <script type="text/plain" id="python-source">
 # Secure Chat Python Bridge Source
 
@@ -12130,6 +12234,671 @@ def summarize_messages(messages):
             for x in messages[-20:]
         ]
     }
+
+
+</script>
+
+
+<script>
+(function(){
+  'use strict';
+  const PROFILE_KEY='securechat.profile.v3';
+
+  function loadProfile(){
+    try{
+      const x=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');
+      return {status:String(x.status||'オンライン').slice(0,40),bio:String(x.bio||'').slice(0,160),avatar:String(x.avatar||'🙂').slice(0,4)};
+    }catch{return {status:'オンライン',bio:'',avatar:'🙂'};}
+  }
+  state.profile=loadProfile();
+  function saveProfile(){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(state.profile));}catch(e){addLog('WARN','profile save',e.message);}}
+  function refreshProfileHeader(){
+    const a=$('topAvatar'); if(a) a.textContent=state.profile.avatar||avatarText(state.name);
+    const n=$('topName'); if(n && !state.selected) n.textContent=state.name;
+  }
+
+  window.openProfileSettings=function(){
+    const p=state.profile||loadProfile();
+    showModal(`
+      <h3>👤 プロフィール設定</h3>
+      <div class="profile-card card">
+        <div class="profile-avatar">${esc(p.avatar||'🙂')}</div>
+        <div><b>${esc(state.name)}</b><div class="subtle">Peer ID: ${esc(state.id)}</div><div class="subtle">この端末に保存されます。</div></div>
+      </div>
+      <div class="field"><label>表示名</label><input id="profileName" maxlength="40" value="${esc(state.name)}"></div>
+      <div class="field"><label>ステータス</label><select id="profileStatus">${['オンライン','取り込み中','離席中','応答不可','オフライン表示'].map(x=>`<option ${p.status===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+      <div class="field"><label>ひとこと</label><textarea id="profileBio" maxlength="160" placeholder="よろしく！">${esc(p.bio||'')}</textarea></div>
+      <div class="field"><label>アイコン文字</label><input id="profileAvatar" maxlength="4" value="${esc(p.avatar||'🙂')}"></div>
+      <div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="saveProfileBtn">保存</button></div>
+    `);
+    $('saveProfileBtn').onclick=()=>{
+      state.name=$('profileName').value.trim()||'ユーザー';
+      state.profile.status=$('profileStatus').value;
+      state.profile.bio=$('profileBio').value.trim();
+      state.profile.avatar=$('profileAvatar').value.trim().slice(0,4)||'🙂';
+      saveSettings(); saveProfile(); refreshProfileHeader(); closeModal(); renderList();
+      try{ if(state.selected) renderChat(state.selected); }catch(e){ addLog('WARN','profile refresh',e.message); }
+      toast('プロフィールを保存しました');
+    };
+  };
+
+  window.connectDirectPeer=async function(peerId){
+    const id=String(peerId ?? ($('directPeerId')?.value || '')).trim();
+    if(!validPeerId(id)){toast('6桁のPeer IDを入力してください');return false;}
+    if(id===state.id){toast('自分自身には接続できません');return false;}
+    try{
+      if($('directPeerId')) $('directPeerId').value=id;
+      toast(`Peer ${id} に接続中…`);
+      await ensureDataConnection(id);
+      await sendControlObject(id,{type:'hello',name:state.name,status:state.profile?.status||'オンライン'});
+      state.selected=id; state.selectedGroup=null;
+      renderList(); renderChat(id);
+      toast(`✅ ${id} に接続要求を送信しました`);
+      return true;
+    }catch(e){
+      addLog('ERROR','direct peer connect',`${id}: ${e.message}`);
+      toast(`❌ 接続失敗: ${e.message}`);
+      return false;
+    }
+  };
+
+  window.openSelfTest=function(){
+    const rows=[]; const test=(n,ok,d)=>rows.push({n,ok,d});
+    test('WebRTC',!!window.RTCPeerConnection,!!window.RTCPeerConnection?'利用可能':'利用不可');
+    test('画面共有',!!navigator.mediaDevices?.getDisplayMedia,!!navigator.mediaDevices?.getDisplayMedia?'利用可能':'利用不可');
+    test('カメラ/マイク',!!navigator.mediaDevices?.getUserMedia,!!navigator.mediaDevices?.getUserMedia?'利用可能':'利用不可');
+    test('WebSocket',!!window.WebSocket,!!window.WebSocket?'利用可能':'利用不可');
+    test('IndexedDB',!!window.indexedDB,!!window.indexedDB?'利用可能':'利用不可');
+    test('Web Crypto',!!window.crypto?.subtle,!!window.crypto?.subtle?'利用可能':'利用不可');
+    test('WebGPU',!!navigator.gpu,!!navigator.gpu?'利用候補':'非対応/未提供');
+    test('WSSシグナリング',state.wsReady,state.wsReady?'接続済み':'未接続');
+    test('P2P',true,`${[...state.connections.values()].length} 接続`);
+    test('AI DB',true,`${state.aiIndex?.length||0} 件`);
+    test('カナリア',!!window.SecureChatCanary,window.SecureChatCanary?'監視中':'未初期化');
+    const warnings=rows.filter(x=>!x.ok).length;
+    showModal(`<h3>🩺 多機能 動作確認</h3><p class="help">ブラウザAPI、保存領域、シグナリング、P2P、AI、カナリアを一括確認します。</p><div class="card">${rows.map(x=>`<div class="test-row"><span class="${x.ok?'test-ok':'test-warn'}">${x.ok?'✅':'⚠️'} ${esc(x.n)}</span><span class="test-detail">${esc(x.d)}</span></div>`).join('')}</div><div class="subtle" style="margin-top:8px">${warnings?`⚠️ ${warnings}項目は未接続/非対応です。`:'✅ 基本チェックはすべて通過しました。'}</div><div class="actions"><button class="btn" id="rerunSelfTest">再検査</button><button class="btn" data-close>閉じる</button></div>`);
+    $('rerunSelfTest').onclick=openSelfTest;
+    addLog('INFO','self test',`warnings=${warnings}`);
+  };
+
+  // Make nested connect controls robust after each list render.
+  const originalRenderList=window.renderList;
+  window.renderList=function(){
+    try{
+      originalRenderList();
+      document.querySelectorAll('[data-connect-peer]').forEach(el=>{
+        el.onclick=async e=>{e.preventDefault();e.stopPropagation();await connectDirectPeer(el.dataset.connectPeer);};
+      });
+    }catch(e){addLog('ERROR','enhanced renderList',e.message);toast(`一覧表示エラー: ${e.message}`);}
+  };
+
+  window.addEventListener('error',e=>{try{addLog('ERROR','UI error',`${e.message||'unknown'} @ ${e.filename||''}:${e.lineno||''}`);}catch{}});
+  window.addEventListener('unhandledrejection',e=>{try{addLog('ERROR','UI rejection',String(e.reason?.message||e.reason||'unknown'));}catch{}});
+
+  refreshProfileHeader();
+  addLog('INFO','profile/direct-connect','ready');
+})();
+</script>
+<script>
+/* =========================================================
+   Secure Chat Canary Monitor
+   - 10秒ごとに暗号化済みDataChannel上でCANARY/PONGを交換
+   - 応答欠落、RTT異常、想定外のシーケンスを警告
+   - これは「傍受・盗聴」を判定する機能ではありません
+   ========================================================= */
+(function(){
+  'use strict';
+
+  const CANARY={
+    intervalMs:10000,
+    timeoutMs:6000,
+    rttWarnMs:2500,
+    maxMisses:2,
+    timer:null,
+    seq:new Map(),
+    pending:new Map(),
+    lastSeen:new Map(),
+    stats:new Map()
+  };
+
+  function canaryId(c){
+    return `${c.remote}::${c.connectionId}`;
+  }
+
+  function canaryState(c){
+    const id=canaryId(c);
+    if(!CANARY.stats.has(id)){
+      CANARY.stats.set(id,{sent:0,received:0,misses:0,lastRtt:0,lastSeq:0,lastSent:0,lastPong:0});
+    }
+    return CANARY.stats.get(id);
+  }
+
+  function canaryWarn(c,message){
+    const peer=c?.remote||'unknown';
+    addLog('WARN','CANARY',`${peer}: ${message}`);
+    try{ alert(`⚠️ Secure Chat カナリア警告\n\n相手: ${peer}\n${message}\n\nこれはネットワーク上の異常を示す通知であり、傍受・盗聴を断定するものではありません。`); }catch{}
+    try{ toast(`⚠️ カナリア警告: ${message}`); }catch{}
+  }
+
+  function removePending(id,seq){
+    const map=CANARY.pending.get(id);
+    if(!map)return null;
+    const item=map.get(seq);
+    if(item)map.delete(seq);
+    if(!map.size)CANARY.pending.delete(id);
+    return item||null;
+  }
+
+  function addPending(id,seq,item){
+    if(!CANARY.pending.has(id))CANARY.pending.set(id,new Map());
+    CANARY.pending.get(id).set(seq,item);
+  }
+
+  async function sendCanary(c){
+    if(!c || c.kind!=='data' || c.control?.readyState!=='open')return;
+    const id=canaryId(c);
+    const st=canaryState(c);
+    const next=(CANARY.seq.get(id)||0)+1;
+    CANARY.seq.set(id,next);
+    const sentAt=Date.now();
+    addPending(id,next,{sentAt,c});
+    st.sent++;
+    st.lastSeq=next;
+    st.lastSent=sentAt;
+
+    try{
+      await sendControlObject(c.remote,{
+        type:'__securechat_canary__',
+        op:'ping',
+        seq:next,
+        sentAt,
+        token:randHex(12)
+      });
+    }catch(e){
+      removePending(id,next);
+      canaryWarn(c,`カナリア送信失敗: ${e?.message||'unknown'}`);
+    }
+  }
+
+  function checkExpired(){
+    const now=Date.now();
+    for(const [id,map] of CANARY.pending){
+      for(const [seq,item] of map){
+        if(now-item.sentAt>CANARY.timeoutMs){
+          map.delete(seq);
+          const st=CANARY.stats.get(id);
+          if(st){
+            st.misses++;
+            const c=item.c;
+            canaryWarn(c,`CANARY ${seq} の応答が${Math.round(CANARY.timeoutMs/1000)}秒以内にありません（連続欠落 ${st.misses}回）`);
+            if(st.misses>=CANARY.maxMisses){
+              try{ monitorSecurity(c.pc); }catch{}
+            }
+          }
+        }
+      }
+      if(!map.size)CANARY.pending.delete(id);
+    }
+  }
+
+  function canaryTick(){
+    checkExpired();
+    for(const c of state.connections.values()){
+      if(c?.kind==='data' && c.control?.readyState==='open'){
+        sendCanary(c).catch(()=>{});
+      }
+    }
+  }
+
+  function start(){
+    if(CANARY.timer)return;
+    CANARY.timer=setInterval(canaryTick,CANARY.intervalMs);
+    setTimeout(canaryTick,1500);
+    setInterval(checkExpired,1000);
+    addLog('INFO','CANARY','10秒間隔カナリア監視を開始');
+  }
+
+  const originalReceivePacket=receivePacket;
+  receivePacket=async function(remote,object){
+    if(object?.type==='__securechat_canary__'){
+      const c=[...state.connections.values()].find(x=>x?.remote===remote && x?.kind==='data');
+      if(object.op==='ping'){
+        try{
+          if(c?.control?.readyState==='open'){
+            await sendControlObject(remote,{
+              type:'__securechat_canary__',
+              op:'pong',
+              seq:Number(object.seq)||0,
+              sentAt:Number(object.sentAt)||0,
+              receivedAt:Date.now()
+            });
+          }
+        }catch(e){
+          if(c)canaryWarn(c,`カナリア応答失敗: ${e?.message||'unknown'}`);
+        }
+        return;
+      }
+      if(object.op==='pong'){
+        if(!c)return;
+        const id=canaryId(c);
+        const seq=Number(object.seq)||0;
+        const item=removePending(id,seq);
+        if(!item){
+          canaryWarn(c,`想定外のCANARY応答を受信しました（seq=${seq}）`);
+          return;
+        }
+        const rtt=Math.max(0,Date.now()-item.sentAt);
+        const st=canaryState(c);
+        st.received++;
+        st.lastRtt=rtt;
+        st.lastPong=Date.now();
+        st.misses=0;
+        if(rtt>CANARY.rttWarnMs){
+          canaryWarn(c,`カナリアRTTが高くなっています: ${rtt}ms`);
+        }
+        return;
+      }
+    }
+    return originalReceivePacket(remote,object);
+  };
+
+  window.SecureChatCanary={
+    start,
+    tick:canaryTick,
+    stats:CANARY.stats
+  };
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+})();
+</script>
+<style>
+.direct-peer-side{padding:9px 11px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface2)}
+.direct-peer-label{font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:750}
+.direct-peer-row{display:flex;gap:6px}.direct-peer-row input{flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:10px;padding:0 9px;background:#fff;outline:none;font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em}.direct-peer-row .btn{height:36px;padding:7px 10px}
+.friend-request-card{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f0fdf4;border-bottom:1px solid var(--line)}
+.friend-request-card .req-main{flex:1;min-width:0}.friend-request-card .req-name{font-weight:800;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.friend-request-card .req-id{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);margin-top:2px}.friend-request-actions{display:flex;gap:5px;flex:none}.friend-request-actions button{border:0;border-radius:9px;padding:7px 8px;font-size:11px;font-weight:750}.friend-request-actions .accept{background:#06c755;color:#fff}.friend-request-actions .reject{background:#fee2e2;color:#991b1b}
+.list-connect{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:6px 8px;border-radius:9px;background:#06c755;color:#fff;font-size:10px;font-weight:800;cursor:pointer;user-select:none;flex:none}.list-connect:hover{filter:brightness(.96)}
+.tabs button{position:relative;z-index:8;pointer-events:auto!important}
+@media(max-width:760px){.direct-peer-side{padding:8px}.direct-peer-row input{height:34px}.direct-peer-row .btn{height:34px}.friend-request-card{padding:8px}}
+</style>
+<style>
+.direct-peer-main{display:flex;gap:8px;align-items:center;max-width:560px;margin:14px auto 0;padding:10px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.72);box-shadow:0 8px 28px rgba(0,0,0,.05)}
+.direct-peer-main input{flex:1;min-width:0;height:42px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;outline:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+.direct-peer-main .btn{height:42px;white-space:nowrap}
+.health-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#eef2f7;font-size:11px}
+.health-pill.ok{background:#dcfce7;color:#166534}.health-pill.warn{background:#fef3c7;color:#92400e}.health-pill.bad{background:#fee2e2;color:#991b1b}
+.ai-db-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px}.ai-db-grid .card{padding:9px}.ai-db-grid b{display:block;font-size:16px}.ai-db-grid small{color:var(--muted);font-size:10px}
+@media(max-width:760px){.direct-peer-main{margin:10px 0 0}.ai-db-grid{grid-template-columns:1fr 1fr}}
+</style>
+<script>
+(function(){
+'use strict';
+const root=document,$id=id=>document.getElementById(id);
+function openDirectPeerModal(prefill=''){
+  try{
+    showModal(`
+      <h3>🔗 Peer IDで直接接続</h3>
+      <p class="help">フレンド登録なしで、6桁のPeer IDへP2P接続します。</p>
+      <div class="field"><label>相手のPeer ID</label><input id="modalDirectPeer" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="123456" value="${esc(prefill)}"></div>
+      <div class="subtle" style="margin-top:6px">自分のPeer ID: <b>${esc(state.id)}</b></div>
+      <div class="actions"><button class="btn" data-close>閉じる</button><button class="btn primary" id="modalDirectPeerGo">接続</button></div>
+    `);
+    const input=$id('modalDirectPeer'),go=$id('modalDirectPeerGo');
+    input?.focus(); input?.select();
+    if(go)go.onclick=async()=>{await window.connectDirectPeer?.(input?.value||'');};
+    input?.addEventListener('keydown',e=>{if(e.key==='Enter')go?.click();});
+  }catch(e){try{addLog('ERROR','direct modal',e.message);toast('Peer ID画面を開けませんでした')}catch{}}
+}
+window.openDirectPeerModal=openDirectPeerModal;
+if(!$id('directPeerTopBtn')){
+  const top=$id('settingsBtn');
+  if(top?.parentElement){const b=document.createElement('button');b.className='iconbtn';b.id='directPeerTopBtn';b.title='Peer IDで接続';b.textContent='🔗';b.onclick=()=>openDirectPeerModal($id('directPeerId')?.value||'');top.parentElement.insertBefore(b,top);}
+}
+function ensureMainDirectInput(){
+  const chat=$id('chat');if(!chat||$id('directPeerMain'))return;const empty=chat.querySelector('.empty');if(!empty)return;
+  const box=document.createElement('div');box.className='direct-peer-main';box.id='directPeerMain';box.innerHTML='<input id="directPeerMainInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="相手のPeer ID（6桁）"><button class="btn primary" id="directPeerMainGo" type="button">🔗 接続</button>';
+  empty.appendChild(box);$id('directPeerMainGo').onclick=async()=>{await window.connectDirectPeer?.($id('directPeerMainInput')?.value||'');};$id('directPeerMainInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')$id('directPeerMainGo')?.click();});
+}
+ensureMainDirectInput();
+if(!('callConnection' in state))state.callConnection=null;
+const originalStartCall=window.startCall;
+if(typeof originalStartCall==='function'){window.startCall=async function(remote){const before=new Set(state.connections.values());await originalStartCall(remote);const c=[...state.connections.values()].find(x=>x?.kind==='media'&&x.remote===remote&&!before.has(x))||[...state.connections.values()].reverse().find(x=>x?.kind==='media'&&x.remote===remote);if(c)state.callConnection=c;};try{startCall=window.startCall}catch{}}
+const originalHandleOffer=window.handleOffer;
+if(typeof originalHandleOffer==='function'){window.handleOffer=async function(remote,payload){await originalHandleOffer(remote,payload);if(payload?.kind==='media'){const c=[...state.connections.values()].reverse().find(x=>x?.kind==='media'&&x.remote===remote);if(c)state.callConnection=c;}};try{handleOffer=window.handleOffer}catch{}}
+const originalHangup=window.hangup;
+if(typeof originalHangup==='function'){window.hangup=function(){state.callConnection=null;return originalHangup()};try{hangup=window.hangup}catch{}}
+async function reliableShareScreen(){
+  const peer=state.callPeer;if(!peer){toast('先にビデオ通話を開始してください');return false}
+  const md=navigator.mediaDevices;
+  if(!md?.getDisplayMedia){addLog('WARN','screen share unavailable','MediaDevices.getDisplayMedia unavailable');toast('このChrome環境では画面共有APIが利用できません');return false}
+  if(window.isSecureContext===false&&location.protocol!=='file:'){addLog('WARN','screen share insecure context',location.protocol);toast('画面共有には安全なコンテキストが必要です（HTTPS / file / localhost）');return false}
+  const c=state.callConnection||[...state.connections.values()].reverse().find(x=>x?.kind==='media'&&x.remote===peer);
+  if(!c?.pc){toast('通話の映像接続が見つかりません');return false}
+  try{
+    const stream=await md.getDisplayMedia({video:{displaySurface:'monitor',frameRate:{ideal:30,max:60}},audio:false,selfBrowserSurface:'exclude',surfaceSwitching:'include'});
+    const track=stream.getVideoTracks()[0];if(!track)throw new Error('画面映像トラックを取得できませんでした');
+    let sender=c.pc.getSenders().find(s=>s.track?.kind==='video');
+    if(!sender)sender=c.pc.getTransceivers?.().find(t=>t.receiver?.track?.kind==='video')?.sender||null;
+    if(!sender){track.stop();throw new Error('映像送信スロットが見つかりません')}
+    await sender.replaceTrack(track);state.screenShareStream=stream;state.screenShareTrack=track;if($id('localVideo'))$id('localVideo').srcObject=stream;
+    track.onended=()=>{try{const camera=state.localStream?.getVideoTracks?.()[0];if(camera)sender.replaceTrack(camera).catch(()=>{});if($id('localVideo')&&state.localStream)$id('localVideo').srcObject=state.localStream}catch{}finally{state.screenShareStream=null;state.screenShareTrack=null;toast('🖥️ 画面共有を終了しました');addLog('INFO','screen share ended',peer)}};
+    toast('🖥️ 画面共有を開始しました');addLog('INFO','screen share started',`${peer}; secure=${!!window.isSecureContext}`);return true;
+  }catch(e){addLog('WARN','screen share',`${e?.name||'Error'}: ${e?.message||e}`);const n=e?.name||'';if(n==='NotAllowedError')toast('画面共有が許可されませんでした');else if(n==='InvalidStateError')toast('画面共有はボタンを直接押して開始してください');else if(n==='NotReadableError')toast('選択した画面を読み取れませんでした');else toast('画面共有に失敗しました: '+(e?.message||'unknown'));return false}
+}
+window.shareScreen=reliableShareScreen;try{shareScreen=reliableShareScreen}catch{}
+$id('shareBtn')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();reliableShareScreen()},true);
+root.querySelectorAll('[data-action="share"]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();reliableShareScreen()},true));
+async function upsertAIDoc(id,kind,text,extra={}){if(!featureOn('aiDatabase'))return;const clean=String(text||'').trim();if(!clean)return;const entry={id,kind,time:extra.time||Date.now(),peer:extra.peer||'',refId:extra.refId||id,text:clean,tokens:[...new Set(aiTokens(clean))]};const i=state.aiIndex.findIndex(x=>x.id===id);if(i>=0)state.aiIndex[i]=entry;else state.aiIndex.push(entry);if(state.storageReady)await db.put('aiIndex',entry).catch(()=>{})}
+async function rebuildAIKnowledge(){if(!featureOn('aiDatabase'))return 0;const jobs=[];for(const m of state.chats||[])jobs.push(upsertAIDoc('message:'+m.id,'message',[contactName(m.from),m.text||'',m.attachment?.name||'',m.type||''].join(' '),{time:m.time,peer:m.peer,refId:m.id}));for(const m of state.aiMemory||[])jobs.push(upsertAIDoc('memory:'+m.id,'memory',m.text,{time:m.time,refId:m.id}));for(const f of state.friends||[])jobs.push(upsertAIDoc('friend:'+f.id,'friend',`フレンド ${f.name||f.id} Peer ID ${f.id}`,{time:f.added||Date.now(),peer:f.id,refId:f.id}));for(const g of state.groups||[])jobs.push(upsertAIDoc('group:'+g.id,'group',`グループ ${g.name||g.id} メンバー ${(g.members||[]).join(' ')}`,{time:g.time||Date.now(),refId:g.id}));for(const c of state.callsHistory||[])jobs.push(upsertAIDoc('call:'+c.id,'call',`${c.direction==='outgoing'?'発信':'着信'} ${contactName(c.peer)} ${new Date(c.time).toLocaleString()}`,{time:c.time,peer:c.peer,refId:c.id}));jobs.push(upsertAIDoc('system:howto','system','使い方 フレンド Peer ID P2P 通話 ビデオ通話 画面共有 ステッカー 絵文字 ファイル 検索 バックアップ AI OpenAI 設定',{time:Date.now()}));jobs.push(upsertAIDoc('system:security','system','セキュリティ AES-GCM WebRTC DTLS WSS ICE カナリア 通信状態',{time:Date.now()}));await Promise.allSettled(jobs);state.settings.aiDbStats={documents:state.aiIndex.length,lastRebuild:Date.now()};saveSettings();addLog('INFO','AI DB rebuild',`documents=${state.aiIndex.length}`);return state.aiIndex.length}
+window.rebuildAIKnowledge=rebuildAIKnowledge;setTimeout(()=>rebuildAIKnowledge().catch(e=>addLog('WARN','AI DB rebuild',e.message)),1200);
+const synonymMap={'使い方':['使い方','使用方法','操作方法','ヘルプ','やり方','利用方法'],peer:['peer','peerid','peer id','ピア','ID'],friend:['フレンド','友達','友だち'],share:['画面共有','スクリーンシェア','screen share'],sticker:['ステッカー','スタンプ'],call:['通話','電話','ビデオ通話','音声通話'],file:['ファイル','添付','送信'],settings:['設定','オプション'],ai:['AI','人工知能','ChatGPT','OpenAI']};
+const baseRetrieve=window.retrieveAI;
+if(typeof baseRetrieve==='function'){window.retrieveAI=function(query,limit=10){const q=aiNormalize(query),expanded=new Set(aiTokens(query));for(const vals of Object.values(synonymMap))if(vals.some(v=>q.includes(aiNormalize(v))))vals.forEach(v=>aiTokens(v).forEach(t=>expanded.add(t)));const now=Date.now();return(state.aiIndex||[]).map(e=>{const text=aiNormalize(e.text||'');let s=0;if(q&&text.includes(q))s+=12;for(const t of expanded){if(e.tokens?.includes(t))s+=4;if(text.includes(t))s+=1}if(e.kind==='system')s+=3;if(e.kind==='memory')s+=2;if(e.kind==='friend'||e.kind==='group')s+=1;const age=Math.max(0,now-(e.time||0))/86400000;s+=Math.max(0,2-Math.log10(1+age));return{e,s}}).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,limit).map(x=>x.e)};try{retrieveAI=window.retrieveAI}catch{}}
+async function runDeepSelfTest(){
+  const rows=[],add=(name,ok,detail)=>rows.push({name,ok,detail});
+  add('WebRTC',!!window.RTCPeerConnection,!!window.RTCPeerConnection?'利用可能':'未対応');add('画面共有API',!!navigator.mediaDevices?.getDisplayMedia,!!navigator.mediaDevices?.getDisplayMedia?'APIあり':'APIなし');add('安全なコンテキスト',!!window.isSecureContext,location.protocol==='file:'?'file://':'現在のコンテキスト');add('カメラ/マイク',!!navigator.mediaDevices?.getUserMedia,!!navigator.mediaDevices?.getUserMedia?'APIあり':'APIなし');add('WebSocket',!!window.WebSocket,!!window.WebSocket?'利用可能':'未対応');add('IndexedDB',!!window.indexedDB,!!window.indexedDB?'利用可能':'未対応');add('Web Crypto',!!window.crypto?.subtle,!!window.crypto?.subtle?'利用可能':'未対応');add('WebGPU',!!navigator.gpu,!!navigator.gpu?'利用候補':'非対応/未提供');add('P2P接続',state.connections.size>0,`${state.connections.size} 接続`);add('AI Database',(state.aiIndex?.length||0)>0,`${state.aiIndex?.length||0} 件`);add('プロフィール',!!state.profile,!!state.profile?'初期化済み':'未初期化');add('カナリア',!!window.SecureChatCanary,window.SecureChatCanary?'監視中':'未初期化');
+  try{if(!crypto?.subtle)throw new Error('Web Cryptoなし');const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);const iv=crypto.getRandomValues(new Uint8Array(12)),data=new TextEncoder().encode('self-test'),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,data),pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);add('AES-GCM実動作',new TextDecoder().decode(pt)==='self-test','暗号化→復号 OK')}catch(e){add('AES-GCM実動作',false,e.message)}
+  try{const testKey='selftest-'+Date.now();await db.put('meta',{id:testKey,value:'ok'});const got=await db.get('meta',testKey);await db.delete('meta',testKey);add('IndexedDB実動作',got?.value==='ok',got?.value==='ok'?'put/get/delete OK':'値不一致')}catch(e){add('IndexedDB実動作',false,e.message)}
+  try{if(!RTCPeerConnection)throw new Error('RTCPeerConnectionなし');const a=new RTCPeerConnection(),b=new RTCPeerConnection();a.onicecandidate=e=>e.candidate&&b.addIceCandidate(e.candidate).catch(()=>{});b.onicecandidate=e=>e.candidate&&a.addIceCandidate(e.candidate).catch(()=>{});const ch=a.createDataChannel('selftest');const opened=new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timeout')),3000);ch.onopen=()=>{clearTimeout(t);res()}});b.ondatachannel=e=>e.channel.onmessage=()=>{};await a.setLocalDescription(await a.createOffer());await b.setRemoteDescription(a.localDescription);await b.setLocalDescription(await b.createAnswer());await a.setRemoteDescription(b.localDescription);await opened;ch.close();a.close();b.close();add('WebRTCループバック実動作',true,'DataChannel OPEN OK')}catch(e){add('WebRTCループバック実動作',false,e.message)}
+  const bad=rows.filter(r=>!r.ok).length,body=rows.map(r=>`<div class="test-row"><span class="${r.ok?'test-ok':'test-warn'}">${r.ok?'✅':'⚠️'} ${esc(r.name)}</span><span class="test-detail">${esc(r.detail)}</span></div>`).join('');showModal(`<h3>🩺 多機能・動作確認</h3><p class="help">ブラウザAPIだけでなく、暗号・IndexedDB・WebRTCループバックまで実動作を確認します。画面共有そのものはユーザー操作なしでは自動実行しません。</p><div class="card">${body}</div><div class="subtle" style="margin-top:8px">${bad?`⚠️ ${bad}項目に注意があります。`:'✅ 実動作テストはすべて成功しました。'}</div><div class="actions"><button class="btn" id="deepSelfTestAgain">再検査</button><button class="btn" data-close>閉じる</button></div>`);$id('deepSelfTestAgain').onclick=runDeepSelfTest;addLog('INFO','deep self test',`warnings=${bad}`);return rows
+}
+window.openSelfTest=runDeepSelfTest;
+const oldOpenAI=window.openAI;
+if(typeof oldOpenAI==='function'){window.openAI=function(){oldOpenAI();setTimeout(()=>{const panel=$id('panel');if(!panel||$id('aiDBLiveStats'))return;const card=document.createElement('div');card.className='card';card.id='aiDBLiveStats';card.style.marginTop='10px';card.innerHTML=`<b>🧠 AI Database</b><div class="ai-db-grid"><div class="card"><b>${state.aiIndex.length}</b><small>Index</small></div><div class="card"><b>${state.aiMemory.length}</b><small>Memory</small></div><div class="card"><b>${state.friends.length+state.groups.length+state.callsHistory.length}</b><small>Relations</small></div></div><div class="actions" style="justify-content:flex-start"><button class="btn" id="rebuildAIDBNow">再構築</button><span id="aiDbRebuildStatus" class="health-pill ok">待機中</span></div>`;panel.appendChild(card);$id('rebuildAIDBNow').onclick=async()=>{const s=$id('aiDbRebuildStatus');s.textContent='再構築中…';s.className='health-pill warn';try{const n=await rebuildAIKnowledge();s.textContent=`${n}件`;s.className='health-pill ok'}catch(e){s.textContent='失敗';s.className='health-pill bad'}}},50)};try{openAI=window.openAI}catch{}}
+const rawRenderChat=window.renderChat;if(typeof rawRenderChat==='function'){window.renderChat=function(){const out=rawRenderChat.apply(this,arguments);setTimeout(ensureMainDirectInput,0);return out};try{renderChat=window.renderChat}catch{}}
+const v=$id('versionCorner')||root.querySelector('.sc-version-corner');if(v)v.textContent='v5.2';
+addLog('INFO','final integration','direct Peer ID + deep self test + AI DB + reliable screen sharing');
+})();
+</script>
+
+<script>
+/* Secure Chat final reliability / friend-request integration */
+(function(){
+  'use strict';
+  const KEY='securechat.friendRequests.v1';
+
+  function readReq(){
+    try{
+      const x=JSON.parse(localStorage.getItem(KEY)||'[]');
+      return Array.isArray(x)?x.filter(r=>/^\\d{6}$/.test(String(r.id||''))):[];
+    }catch{return []}
+  }
+  function saveReq(){
+    try{localStorage.setItem(KEY,JSON.stringify(state.friendRequests||[]));}catch(e){try{addLog('WARN','friend requests save',e.message)}catch{}}
+  }
+  if(!Array.isArray(state.friendRequests)) state.friendRequests=readReq();
+  else if(!state.friendRequests.length) state.friendRequests=readReq();
+  saveReq();
+
+  function pendingIndex(id){return (state.friendRequests||[]).findIndex(x=>x.id===id)}
+  function addPending(remote,name){
+    if(!/^\\d{6}$/.test(String(remote||'')) || remote===state.id) return;
+    const f=state.friends.find(x=>x.id===remote);
+    if(f) return;
+    const item={id:String(remote),name:String(name||remote),time:Date.now()};
+    const i=pendingIndex(item.id);
+    if(i>=0) state.friendRequests[i]={...state.friendRequests[i],...item};
+    else state.friendRequests.unshift(item);
+    state.friendRequests=state.friendRequests.slice(0,200);
+    saveReq(); renderFriendListSafe();
+  }
+  function removePending(id){
+    state.friendRequests=(state.friendRequests||[]).filter(x=>x.id!==id); saveReq(); renderFriendListSafe();
+  }
+
+  // Intercept the original auto-add behavior and replace it with a real request state.
+  const originalReceive=window.receivePacket;
+  if(typeof originalReceive==='function' && !originalReceive.__scFriendRequestV2){
+    const wrapped=async function(remote,object){
+      try{
+        if(object?.type==='friend-request'){
+          if(state.friends.some(f=>f.id===remote)){
+            await sendControlObject(remote,{type:'friend-response',accepted:true,name:state.name});
+            return;
+          }
+          addPending(remote,object.name||remote);
+          playNotificationSound?.();
+          browserNotify4?.(object.name||remote,'フレンド申請が届きました');
+          toast(`👥 ${object.name||remote} からフレンド申請`);
+          addLog('INFO','friend request received',`${remote} (${object.name||remote})`);
+          return;
+        }
+        if(object?.type==='friend-response'){
+          if(object.accepted){
+            await addFriend(remote,object.name||remote,true);
+            removePending(remote);
+            toast(`✅ ${object.name||remote} がフレンド申請を許可しました`);
+            selectPeer(remote);
+          }else{
+            toast(`❌ ${object.name||remote} がフレンド申請を拒否しました`);
+            addLog('INFO','friend request rejected',remote);
+          }
+          renderFriendListSafe();
+          return;
+        }
+      }catch(e){addLog('ERROR','friend request handling',e.message);toast('フレンド申請処理に失敗しました')}
+      return originalReceive(remote,object);
+    };
+    wrapped.__scFriendRequestV2=true;
+    window.receivePacket=wrapped;
+    try{receivePacket=wrapped}catch{}
+  }
+
+  async function acceptRequest(id){
+    const req=(state.friendRequests||[]).find(x=>x.id===id); if(!req)return;
+    try{
+      await addFriend(id,req.name||id,true);
+      await sendControlObject(id,{type:'friend-response',accepted:true,name:state.name});
+      removePending(id); selectPeer(id);
+      toast(`✅ ${req.name||id} をフレンドに追加しました`);
+    }catch(e){
+      addLog('ERROR','friend accept',`${id}: ${e.message}`);
+      toast(`フレンド許可に失敗しました: ${e.message}`);
+    }
+  }
+  async function rejectRequest(id){
+    const req=(state.friendRequests||[]).find(x=>x.id===id); if(!req)return;
+    try{await sendControlObject(id,{type:'friend-response',accepted:false,name:state.name})}catch(e){addLog('WARN','friend reject send',`${id}: ${e.message}`)}
+    removePending(id); toast(`拒否しました: ${req.name||id}`);
+  }
+
+  function renderFriendRequests(){
+    if(state.tab!=='friends') return '';
+    const reqs=state.friendRequests||[];
+    if(!reqs.length)return '';
+    return reqs.map(r=>`<div class="friend-request-card" data-request-id="${esc(r.id)}"><div class="avatar" style="width:38px;height:38px">${esc(avatarText(r.name||r.id))}</div><div class="req-main"><div class="req-name">${esc(r.name||r.id)}</div><div class="req-id">${esc(r.id)} ・ フレンド申請</div></div><div class="friend-request-actions"><button type="button" class="accept" data-accept-request="${esc(r.id)}">許可</button><button type="button" class="reject" data-reject-request="${esc(r.id)}">拒否</button></div></div>`).join('');
+  }
+
+  function wireRequestButtons(){
+    document.querySelectorAll('[data-accept-request]').forEach(b=>{b.onclick=async e=>{e.preventDefault();e.stopPropagation();await acceptRequest(b.dataset.acceptRequest)}});
+    document.querySelectorAll('[data-reject-request]').forEach(b=>{b.onclick=async e=>{e.preventDefault();e.stopPropagation();await rejectRequest(b.dataset.rejectRequest)}});
+  }
+
+  const originalRenderList=window.renderList;
+  function renderFriendListSafe(){
+    if(typeof originalRenderList==='function'){
+      try{originalRenderList()}catch(e){addLog('ERROR','render list',e.message)}
+    }
+    const list=$('list');
+    if(list && state.tab==='friends'){
+      const req=renderFriendRequests();
+      if(req) list.insertAdjacentHTML('afterbegin',req);
+      wireRequestButtons();
+    }
+  }
+  window.renderList=renderFriendListSafe;
+  try{renderList=renderFriendListSafe}catch{}
+
+  // Tabs: event delegation at capture phase prevents dead/overwritten inline handlers.
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('.tabs button[data-tab]');
+    if(!btn)return;
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.tabs button[data-tab]').forEach(x=>x.classList.toggle('active',x===btn));
+    state.tab=btn.dataset.tab||'chats';
+    try{renderFriendListSafe()}catch{}
+  },true);
+
+  // Direct Peer ID sidebar input.
+  function directSidebar(){
+    const input=$('directPeerSidebarInput'),go=$('directPeerSidebarGo');
+    if(!input||!go)return;
+    const run=async()=>{try{await window.connectDirectPeer?.(input.value)}catch(e){toast('接続失敗: '+e.message)}};
+    go.onclick=e=>{e.preventDefault();e.stopPropagation();run()};
+    input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();run()}};
+  }
+
+  // Always point all screen-share buttons at one function, and remember the exact call connection.
+  async function shareNow(){
+    if(state.screenShareStream){
+      try{state.screenShareTrack?.stop()}catch{}
+      return true;
+    }
+    const peer=state.callPeer;
+    if(!peer){toast('先にビデオ通話を開始してください');return false}
+    const md=navigator.mediaDevices;
+    if(typeof md?.getDisplayMedia!=='function'){toast('このChromeでは画面共有APIが利用できません');return false}
+    let c=state.callConnection;
+    if(!c || c.kind!=='media' || c.remote!==peer || c.pc?.connectionState==='closed'){
+      c=[...state.connections.values()].find(x=>x?.kind==='media'&&x.remote===peer&&x.pc?.connectionState!=='closed')||null;
+    }
+    if(!c?.pc){toast('通話の映像接続が見つかりません');addLog('WARN','screen share','media connection missing');return false}
+    try{
+      const stream=await md.getDisplayMedia({video:true,audio:false});
+      const track=stream.getVideoTracks?.()[0]; if(!track)throw new Error('画面トラックを取得できませんでした');
+      let sender=c.pc.getSenders().find(s=>s.track?.kind==='video');
+      if(!sender){
+        const trans=c.pc.getTransceivers?.().find(t=>t.sender?.track?.kind==='video');
+        sender=trans?.sender||null;
+      }
+      if(!sender)throw new Error('既存の映像送信スロットがありません');
+      await sender.replaceTrack(track);
+      state.screenShareStream=stream;state.screenShareTrack=track;state.screenShareSender=sender;
+      if($('localVideo')) $('localVideo').srcObject=stream;
+      track.onended=async()=>{
+        try{const cam=state.localStream?.getVideoTracks?.()[0];if(cam)await sender.replaceTrack(cam);if($('localVideo')&&state.localStream)$('localVideo').srcObject=state.localStream}catch(e){addLog('WARN','screen share restore',e.message)}
+        state.screenShareStream=null;state.screenShareTrack=null;state.screenShareSender=null;toast('🖥️ 画面共有を終了しました');
+      };
+      toast('🖥️ 画面共有を開始しました');addLog('INFO','screen share started',peer);return true;
+    }catch(e){
+      const n=e?.name||'';addLog('WARN','screen share',`${n}: ${e?.message||e}`);
+      if(n==='NotAllowedError')toast('画面共有がキャンセルまたは許可されませんでした');
+      else if(n==='InvalidStateError')toast('画面共有ボタンを直接クリックして開始してください');
+      else toast('画面共有に失敗しました: '+(e?.message||'unknown'));
+      return false;
+    }
+  }
+  window.shareScreen=shareNow;try{shareScreen=shareNow}catch{}
+  $('shareBtn')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();shareNow()},true);
+
+  // Signal connection UX: never leave the header at 「初期化中…」 forever.
+  setTimeout(()=>{
+    try{
+      if(!$('topStatus'))return;
+      if(state.wsReady)setTopStatus('オンライン');
+      else if($('topStatus').textContent==='初期化中…'||$('topStatus').textContent==='接続中…'){
+        setTopStatus('オフライン（再接続待ち）');
+      }
+    }catch(e){try{addLog('WARN','status fallback',e.message)}catch{}}
+  },7000);
+
+  directSidebar();
+  setTimeout(()=>{try{renderFriendListSafe()}catch{}},50);
+  addLog('INFO','friend requests','accept/reject UI ready');
+})();
+</script>
+
+<script>
+/* Final interaction hardening */
+(function(){
+  'use strict';
+  const $id=id=>document.getElementById(id);
+
+  // Catch screen-share before older element-level capture listeners can cancel it.
+  document.addEventListener('click',e=>{
+    const share=e.target.closest?.('#shareBtn');
+    if(!share)return;
+    e.preventDefault();
+    e.stopPropagation();
+    try{e.stopImmediatePropagation()}catch{}
+    if(typeof window.shareScreen==='function') window.shareScreen();
+  },true);
+
+  // Top-level navigation/buttons are handled once at document capture phase.
+  const handlers={
+    settingsBtn:()=>window.openSettings?.(),
+    aiBtn:()=>window.openAI?.(),
+    openAiQuick:()=>window.openAI?.(),
+    nameBtn:()=>window.openName?.(),
+    profileBtn:()=>window.openProfileSettings?.(),
+    directConnectBtn:()=>window.openDirectPeerModal?.(),
+    testBtn:()=>window.openSelfTest?.(),
+    copyId:()=>window.navigator?.clipboard?.writeText?copyText(state.id).then(ok=>toast(ok?'Peer IDをコピーしました':'コピーできませんでした')):null,
+    inviteBtn:()=>window.openInvite?.(),
+    friendBtn:()=>window.openFriend?.(),
+    groupBtn:()=>window.openGroup?.(),
+    callBtn:()=>state.selected?window.startCall?.(state.selected):toast('相手を選択してください'),
+    emojiBtn:()=>window.openEmojiPicker?.(),
+    attachBtn:()=>document.getElementById('fileInput')?.click(),
+    searchBtn:()=>window.openSearch?.(),
+    backupBtn:()=>window.openBackup?.(),
+    logBtn:()=>document.getElementById('logBtn')?.onclick?.(),
+    iceBtn:()=>window.runICEDiagnostic?.(),
+    micBtn:()=>window.toggleMic?.(),
+    camBtn:()=>window.toggleCam?.(),
+    wakeBtn:()=>window.ensureWakeLock?.(),
+    hangBtn:()=>window.hangup?.()
+  };
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('#shareBtn')) return;
+    for(const [id,fn] of Object.entries(handlers)){
+      const el=e.target.closest?.('#'+id);
+      if(!el)continue;
+      // Do not intercept dynamically created modal controls with the same id unless exact static button.
+      if(id==='logBtn' && el!==$id(id)) continue;
+      e.preventDefault(); e.stopPropagation(); try{fn()}catch(err){try{addLog('ERROR','button handler',`${id}: ${err.message}`);toast(`${id} の処理に失敗しました`)}catch{}}
+      return;
+    }
+  },true);
+
+  // A resilient tab switcher with explicit rendering and no dependency on prior handlers.
+  document.addEventListener('pointerup',e=>{
+    const tab=e.target.closest?.('.tabs button[data-tab]');
+    if(!tab)return;
+    e.preventDefault();e.stopPropagation();
+    document.querySelectorAll('.tabs button[data-tab]').forEach(x=>x.classList.toggle('active',x===tab));
+    state.tab=tab.dataset.tab||'chats';
+    try{window.renderList?.()}catch(err){try{addLog('ERROR','tab render',err.message)}catch{}}
+  },true);
+
+  // Keep the direct Peer ID input present even when the app rerenders its list.
+  function ensureSidebarDirect(){
+    const side=document.querySelector('.sidebar'); if(!side||$id('directPeerSidebarInput'))return;
+    const list=$id('list'); if(!list)return;
+    const wrap=document.createElement('div');wrap.className='direct-peer-side';wrap.innerHTML='<div class="direct-peer-label">🔗 Peer IDで直接接続</div><div class="direct-peer-row"><input id="directPeerSidebarInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="相手の6桁Peer ID"><button class="btn primary" id="directPeerSidebarGo" type="button">接続</button></div>';
+    list.parentNode.insertBefore(wrap,list);
+    const run=()=>window.connectDirectPeer?.($id('directPeerSidebarInput')?.value||'');
+    $id('directPeerSidebarGo').onclick=run;$id('directPeerSidebarInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();run()}};
+  }
+  ensureSidebarDirect();
+  setTimeout(ensureSidebarDirect,500);
+
+  // Make status deterministic when signaling is blocked by the browser/network policy.
+  setTimeout(()=>{
+    const e=$id('topStatus'); if(!e)return;
+    if(!state.wsReady && /初期化中|接続確認中|接続中/.test(e.textContent||'')){
+      setTopStatus('オフライン（シグナリング未接続）');
+      try{addLog('WARN','signaling status','timeout fallback status shown')}catch{}
+    }
+  },6500);
+
+  addLog('INFO','interaction hardening','friend request approval + tabs + screen share capture + status fallback');
+})();
 </script>
 
 </body>
