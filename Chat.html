@@ -1306,6 +1306,9 @@ const state={
   ws:null,
   wsReady:false,
   signalTimer:null,
+  signalConnecting:false,
+  signalGeneration:0,
+  signalReconnectDelay:2500,
   activeEndpoint:null,
 
   peerServer:{
@@ -2166,205 +2169,148 @@ function signalingPorts(){
   ];
 }
 
+function scheduleSignalReconnect(reason='unknown'){
+  if(!featureOn('autoReconnect')) return;
+  if(state.signalTimer) return;
+
+  const delay=Math.max(2500, Math.min(state.signalReconnectDelay||2500, 30000));
+  addLog('INFO','signaling reconnect scheduled',`${delay}ms${reason?` (${reason})`:''}`);
+  state.signalTimer=setTimeout(()=>{
+    state.signalTimer=null;
+    connectSignal();
+  },delay);
+  state.signalReconnectDelay=Math.min(delay*2,30000);
+}
+
 function connectSignal(){
-  clearTimeout(
-    state.signalTimer
-  );
+  // Do not create a second WebSocket while one is already usable/connecting.
+  const current=state.ws;
+  if(current && (current.readyState===WebSocket.OPEN || current.readyState===WebSocket.CONNECTING)){
+    state.wsReady=current.readyState===WebSocket.OPEN;
+    return;
+  }
+
+  clearTimeout(state.signalTimer);
+  state.signalTimer=null;
+  state.signalConnecting=true;
+  state.signalGeneration=(state.signalGeneration||0)+1;
+  const generation=state.signalGeneration;
 
   state.ws=null;
   state.wsReady=false;
+  setTopStatus('接続中…');
 
-  setTopStatus(
-    '接続中…'
-  );
-
-  const ports=
-    signalingPorts();
-
+  const ports=signalingPorts();
   let index=0;
 
   const next=()=>{
-    if(
-      index>=ports.length
-    ){
-      setTopStatus(
-        navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続'
-      );
-
-      addLog(
-        'ERROR',
-        'signaling failed',
-        ports.join(',')
-      );
-
-      if(
-        featureOn('autoReconnect')
-      ){
-        state.signalTimer=
-          setTimeout(
-            connectSignal,
-            2500
-          );
-      }
-
+    // Ignore stale attempts created by a later connectSignal() call.
+    if(generation!==state.signalGeneration) return;
+    if(index>=ports.length){
+      state.signalConnecting=false;
+      setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続');
+      addLog('ERROR','signaling failed',ports.join(','));
       monitorSecurity();
-
+      scheduleSignalReconnect('接続失敗');
       return;
     }
 
-    const port=
-      ports[index++];
-
+    const port=ports[index++];
     let ws;
-
     try{
-      ws=
-        new WebSocket(
-          signalURL(port)
-        );
+      ws=new WebSocket(signalURL(port));
     }catch(e){
-      addLog(
-        'WARN',
-        'websocket constructor',
-        e.message
-      );
-
-      setTimeout(
-        next,
-        80
-      );
-
+      addLog('WARN','websocket constructor',e?.message||String(e));
+      setTimeout(next,80);
       return;
     }
 
     state.ws=ws;
-
     let finished=false;
     let opened=false;
+    let settled=false;
 
-    const timer=
-      setTimeout(
-        ()=>{
-          if(finished)return;
+    const isCurrent=()=>generation===state.signalGeneration && state.ws===ws;
 
-          finished=true;
+    const finishAttempt=()=>{
+      if(settled)return false;
+      settled=true;
+      clearTimeout(timer);
+      return true;
+    };
 
-          try{
-            ws.close();
-          }catch{}
-
-          if(
-            state.peerServer.fallbackEnabled
-          ){
-            next();
-          }else{
-            state.wsReady=false;
-            setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続');
-            addLog('WARN','WebSocket timeout',`port=${port}`);
-            monitorSecurity();
-          }
-        },
-        Math.max(
-          1000,
-          state.peerServer.fallbackTimeoutMs
-        )
-      );
+    const timer=setTimeout(()=>{
+      if(finished || !isCurrent()) return;
+      finished=true;
+      try{ws.close();}catch{}
+      state.wsReady=false;
+      if(state.peerServer.fallbackEnabled){
+        next();
+      }else{
+        state.signalConnecting=false;
+        setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続');
+        addLog('WARN','WebSocket timeout',`port=${port}`);
+        monitorSecurity();
+        scheduleSignalReconnect('タイムアウト');
+      }
+    },Math.max(1000,state.peerServer.fallbackTimeoutMs));
 
     ws.onopen=()=>{
-      if(finished)return;
-
+      if(!isCurrent() || finished){ try{ws.close();}catch{}; return; }
       finished=true;
       opened=true;
-
-      clearTimeout(
-        timer
-      );
-
+      finishAttempt();
+      state.signalConnecting=false;
+      state.signalReconnectDelay=2500;
       state.wsReady=true;
-
-      state.activeEndpoint={
-        scheme:state.peerServer.scheme,
-        host:state.peerServer.host,
-        port
-      };
-
-      setTopStatus(
-        `オンライン · ${port}`
-      );
-
-      addLog(
-        'INFO',
-        'WebSocket open',
-        `${state.peerServer.scheme}://${state.peerServer.host}:${port}`
-      );
-
+      state.activeEndpoint={scheme:state.peerServer.scheme,host:state.peerServer.host,port};
+      setTopStatus(`オンライン · ${port}`);
+      addLog('INFO','WebSocket open',`${state.peerServer.scheme}://${state.peerServer.host}:${port}`);
       monitorSecurity();
-
-      reconnectKnownPeers();
+      try{ if(typeof reconnectKnownPeers==='function') reconnectKnownPeers(); }catch(e){ addLog('WARN','reconnectKnownPeers',e?.message||String(e)); }
     };
 
     ws.onerror=()=>{
-      addLog(
-        'WARN',
-        'WebSocket error',
-        `port=${port}`
-      );
+      if(!isCurrent()) return;
+      addLog('WARN','WebSocket error',`port=${port}`);
     };
 
-    ws.onclose=()=>{
-      clearTimeout(
-        timer
-      );
-
+    ws.onclose=(event)=>{
+      clearTimeout(timer);
+      // A stale socket must never flip the current connection back to offline.
+      if(!isCurrent()) return;
       state.wsReady=false;
+      state.signalConnecting=false;
 
       if(!opened){
-        if(
-          !finished &&
-          state.peerServer.fallbackEnabled
-        ){
+        if(!finished && state.peerServer.fallbackEnabled){
           finished=true;
           next();
+        }else if(!finished){
+          finished=true;
+          setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続');
+          addLog('WARN','WebSocket closed before open',`port=${port} code=${event?.code||0}`);
+          scheduleSignalReconnect('open前切断');
         }
         return;
       }
 
-      setTopStatus(
-        'シグナリング切断'
-      );
-
-      if(
-        featureOn('autoReconnect')
-      ){
-        state.signalTimer=
-          setTimeout(
-            connectSignal,
-            2500
-          );
-      }
+      setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング切断');
+      addLog('WARN','WebSocket closed',`port=${port} code=${event?.code||0}${event?.reason?` reason=${event.reason}`:''}`);
+      state.ws=null;
+      scheduleSignalReconnect('切断');
     };
 
     ws.onmessage=e=>{
+      if(!isCurrent()) return;
       let packet;
-
-      try{
-        packet=
-          JSON.parse(
-            e.data
-          );
-      }catch{
-        return;
-      }
-
-      handleSignal(
-        packet
-      );
+      try{ packet=JSON.parse(e.data); }catch{ return; }
+      handleSignal(packet);
     };
   };
 
   next();
 }
-
 function handleSignal(
   packet
 ){
