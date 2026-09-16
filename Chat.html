@@ -33,6 +33,13 @@ body{
 }
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
+
+/* Desktop pointer companion: hidden on iPad/touch devices. */
+#sc-cursor-laugh{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;user-select:none;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;font-size:16px;line-height:1;display:none;transform:translate3d(-9999px,-9999px,0);filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));will-change:transform;}
+@media (pointer:fine){#sc-cursor-laugh{display:block!important;}}
+@keyframes scLaughSpin{0%{transform:translate3d(var(--sc-x),var(--sc-y),0) rotate(0deg) scale(1)}20%{transform:translate3d(var(--sc-x),var(--sc-y),0) rotate(72deg) scale(1.12)}45%{transform:translate3d(var(--sc-x),var(--sc-y),0) rotate(210deg) scale(.9)}70%{transform:translate3d(var(--sc-x),var(--sc-y),0) rotate(330deg) scale(1.16)}100%{transform:translate3d(var(--sc-x),var(--sc-y),0) rotate(360deg) scale(1)}}
+#sc-cursor-laugh.sc-spin{animation:scLaughSpin .78s cubic-bezier(.2,.7,.3,1) both;}
+@media (hover:none) and (pointer:coarse){#sc-cursor-laugh{display:none!important;}}
 .hidden{display:none!important}
 .app{
   height:var(--sc-vvh,100dvh);
@@ -719,6 +726,9 @@ button{cursor:pointer}
 .peer-connect-row input{min-width:0;flex:1;height:38px;border:1px solid var(--line);border-radius:11px;padding:0 10px;background:var(--surface);color:var(--ink);outline:none}
 .peer-connect-row .btn{height:38px;white-space:nowrap}
 .peer-connect small{display:block;margin-top:6px;color:var(--muted);font-size:10px;line-height:1.45}
+.sc-friend-request{display:flex;align-items:center;gap:8px;min-height:64px;margin:6px 8px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.sc-friend-request .txt{min-width:0;flex:1}
+.sc-friend-request .btn{padding:7px 10px;font-size:12px;white-space:nowrap}
 .list-connect{display:inline-flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:5px 8px;font-size:11px;font-weight:800;color:var(--green2);cursor:pointer}
 .list-connect:hover{filter:brightness(.96)}
 .profile-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;align-items:center}
@@ -747,6 +757,7 @@ html,body{min-height:100%;}
 </head>
 
 <body>
+<div id="sc-cursor-laugh" aria-hidden="true">🤣</div>
 
 <div class="app">
   <aside class="sidebar">
@@ -1275,6 +1286,7 @@ const state={
 
   chats:[],
   friends:[],
+  friendRequests:[],
   groups:[],
   callsHistory:[],
   logs:[],
@@ -1388,6 +1400,7 @@ class Database{
           const storeNames=[
             'messages',
             'friends',
+            'friendRequests',
             'groups',
             'calls',
             'logs',
@@ -2965,7 +2978,7 @@ async function handleOffer(
     ){
       const accept=
         confirm(
-          `${c.metadata?.name||remote} からビデオ通話です。\n受けますか？`
+          `${callDisplayName(remote,c.metadata)} からビデオ通話です。\n受けますか？`
         );
 
       playNotificationSound();
@@ -3020,8 +3033,7 @@ async function handleOffer(
         .add('show');
 
       $('callName').textContent=
-        c.metadata?.name||
-        contactName(remote);
+        callDisplayName(remote,c.metadata);
 
       state.callPeer=
         remote;
@@ -3402,16 +3414,11 @@ async function receivePacket(
   if(
     object.type==='friend-request'
   ){
-    await addFriend(
-      remote,
-      object.name||remote,
-      true
-    );
-
-    toast(
-      `${object.name||remote} からフレンド申請`
-    );
-
+    if(typeof window.handleIncomingFriendRequest==='function'){
+      await window.handleIncomingFriendRequest(remote,object);
+      return;
+    }
+    toast(`${object.name||'ユーザー'} からフレンド申請`);
     return;
   }
 
@@ -3660,6 +3667,14 @@ function contactName(id){
     );
 
   return f?.name||id;
+}
+
+function callDisplayName(remote, metadata={}){
+  const fromMeta=String(metadata?.name||'').trim();
+  if(fromMeta && fromMeta!==remote) return fromMeta;
+  const local=contactName(remote);
+  if(local && local!==remote) return local;
+  return 'ユーザー';
 }
 
 async function addFriend(
@@ -8083,7 +8098,7 @@ async function startCall(
       .add('show');
 
     $('callName').textContent=
-      contactName(remote);
+      callDisplayName(remote);
 
     state.callPeer=
       remote;
@@ -9930,6 +9945,7 @@ function renderList(){
   if(
     state.tab==='friends'
   ){
+    const requests=(state.friendRequests||[]).filter(r=>!query||`${r.name||''} ${r.id}`.toLowerCase().includes(query));
     const friends=
       state.friends.filter(
         f=>
@@ -9939,9 +9955,17 @@ function renderList(){
             .includes(query)
       );
 
-    list.innerHTML=
-      friends.length
-        ?friends.map(
+    const requestHTML=requests.length?`<div class="subtle" style="padding:10px 12px 5px;font-weight:800">📨 フレンド申請</div>`+requests.map(r=>`
+      <div class="item sc-friend-request" data-request-id="${esc(r.id)}">
+        <span class="avatar">${esc(avatarText(r.name||'ユーザー'))}</span>
+        <span class="txt"><strong>${esc(r.name||'ユーザー')}</strong><p>フレンド申請</p></span>
+        <span class="request-actions" style="display:flex;gap:6px;margin-left:auto">
+          <button type="button" class="btn primary" data-friend-accept="${esc(r.id)}">承認</button>
+          <button type="button" class="btn danger" data-friend-reject="${esc(r.id)}">拒否</button>
+        </span>
+      </div>`).join(''):'';
+
+    const friendHTML=friends.length?friends.map(
           f=>
             `
             <button
@@ -9981,6 +10005,8 @@ function renderList(){
             フレンドはいません。
           </div>
         `;
+
+    list.innerHTML=requestHTML+friendHTML;
 
   }else if(
     state.tab==='history'
@@ -10947,6 +10973,7 @@ async function loadDBState(){
     const [
       chats,
       friends,
+      friendRequests,
       groups,
       calls,
       logs,
@@ -10963,6 +10990,7 @@ async function loadDBState(){
       await Promise.all([
         db.all('messages'),
         db.all('friends'),
+        db.all('friendRequests'),
         db.all('groups'),
         db.all('calls'),
         db.all('logs'),
@@ -10986,6 +11014,8 @@ async function loadDBState(){
       friends.sort(
         (a,b)=>a.added-b.added
       );
+
+    state.friendRequests=(friendRequests||[]).filter(r=>validPeerId(r.id)&&r.id!==state.id).sort((a,b)=>(b.time||0)-(a.time||0));
 
     state.groups=
       groups.sort(
@@ -11670,26 +11700,33 @@ boot();
   // Friend request inbox instead of auto-adding on arrival.
   if(!Array.isArray(state.friendRequests)) state.friendRequests=[];
   async function respondFriendRequest(id,allow){
-    const req=state.friendRequests.find(x=>x.id===id); if(!req)return;
-    state.friendRequests=state.friendRequests.filter(x=>x.id!==id);
-    try{if(allow) await addFriend(id,req.name||id,true)}catch(e){addLog('WARN','friend accept',e?.message||String(e))}
-    try{await sendControlObject(id,{type:allow?'friend-accepted':'friend-rejected',name:state.name})}catch(e){addLog('WARN','friend response',e?.message||String(e))}
-    try{renderList()}catch{}
-    toast(allow?'フレンド申請を許可しました':'フレンド申請を拒否しました');
+    id=String(id||'').trim();
+    if(!validPeerId(id)||id===state.id){toast('無効なフレンド申請です');return false;}
+    const req=(state.friendRequests||[]).find(x=>x.id===id);
+    if(!req){toast('そのフレンド申請は見つかりません');try{renderList()}catch{};return false;}
+    const btns=[...document.querySelectorAll(`[data-friend-accept="${CSS.escape(id)}"],[data-friend-reject="${CSS.escape(id)}"]`)];
+    btns.forEach(b=>b.disabled=true);
+    try{
+      if(allow){await addFriend(id,req.name||'ユーザー',true);}
+      try{await sendControlObject(id,{type:allow?'friend-accepted':'friend-rejected',name:state.name});}
+      catch(e){addLog('WARN','friend response send',e?.message||String(e));}
+      state.friendRequests=state.friendRequests.filter(x=>x.id!==id);
+      if(state.storageReady) await db.delete('friendRequests',id).catch(e=>addLog('WARN','friend request delete',e?.message||String(e)));
+      renderList();
+      toast(allow?'フレンド申請を承認しました':'フレンド申請を拒否しました');
+      return true;
+    }catch(e){
+      btns.forEach(b=>b.disabled=false);
+      addLog('ERROR','friend request response',e?.message||String(e));
+      toast('フレンド申請の処理に失敗しました: '+(e?.message||'不明なエラー'));
+      return false;
+    }
   }
   const previousReceive=window.receivePacket;
   if(typeof previousReceive==='function'&&!previousReceive.__stableFriend){
     const recv=async function(remote,obj){
       try{
-        if(obj?.type==='friend-request'){
-          const existing=state.friendRequests.find(x=>x.id===remote);
-          const row={id:remote,name:String(obj.name||remote),time:Date.now()};
-          if(existing)Object.assign(existing,row);else state.friendRequests.push(row);
-          renderList();
-          try{playNotificationSound()}catch{}
-          toast((obj.name||remote)+' からフレンド申請');
-          return;
-        }
+        if(obj?.type==='friend-request'){await window.handleIncomingFriendRequest(remote,obj);return;}
         if(obj?.type==='friend-accepted'){await addFriend(remote,obj.name||remote,true);renderList();toast((obj.name||remote)+' がフレンド申請を許可しました');return;}
         if(obj?.type==='friend-rejected'){toast((obj.name||remote)+' がフレンド申請を拒否しました');return;}
       }catch(e){addLog('ERROR','friend request handler',e?.message||String(e))}
@@ -11699,6 +11736,26 @@ boot();
     window.receivePacket=recv;
     try{receivePacket=recv}catch{}
   }
+
+  window.handleIncomingFriendRequest=async function(remote,obj){
+    if(!validPeerId(remote)||remote===state.id)return;
+    const row={id:remote,name:String(obj?.name||'ユーザー').trim()||'ユーザー',time:Date.now()};
+    const existing=(state.friendRequests||[]).find(x=>x.id===remote);
+    if(existing)Object.assign(existing,row); else state.friendRequests.push(row);
+    if(state.storageReady)await db.put('friendRequests',row).catch(e=>addLog('WARN','friend request save',e?.message||String(e)));
+    state.tab='friends';
+    renderList();
+    try{playNotificationSound()}catch{}
+    toast(row.name+' からフレンド申請');
+  };
+
+  document.addEventListener('click',ev=>{
+    const accept=ev.target?.closest?.('[data-friend-accept]');
+    const reject=ev.target?.closest?.('[data-friend-reject]');
+    if(!accept&&!reject)return;
+    ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
+    safe(()=>respondFriendRequest((accept||reject).dataset.friendAccept||(accept||reject).dataset.friendReject),accept?'フレンド承認':'フレンド拒否');
+  },true);
 
   // Richer local AI DB: messages, memories, friends, groups, calls, and built-in help.
   const HELP=[
@@ -11929,12 +11986,200 @@ boot();
   setInterval(refreshNetworkStatus,1500);
   setTimeout(()=>{try{ensurePeerIdentity();renderDynamicUI()}catch{};bindStatic();syncPeerIdUI()},1200);
   setInterval(syncPeerIdUI,1000);
+
+  // Desktop-only laughing pointer companion. Show on real mouse/trackpad devices,
+  // but hide on iPad/iPhone/iPod even when iPadOS reports a desktop-like platform.
+  (function(){
+    try{
+      const el=$id('sc-cursor-laugh');
+      if(!el)return;
+      const ua=navigator.userAgent||'';
+      const platform=navigator.platform||'';
+      const appleTouchDevice=/iPad|iPhone|iPod/i.test(ua)||(/MacIntel/i.test(platform)&&navigator.maxTouchPoints>1);
+      const hasFine=matchMedia('(pointer:fine)').matches || matchMedia('(hover:hover)').matches;
+      const touchOnly=navigator.maxTouchPoints>0 && !hasFine;
+      if(appleTouchDevice || touchOnly){el.style.display='none';return;}
+      el.style.display='block';
+      let raf=0,x=innerWidth/2,y=innerHeight/2;
+      const setPos=()=>{el.style.setProperty('--sc-x',(x+14)+'px');el.style.setProperty('--sc-y',(y+13)+'px');el.style.transform=`translate3d(${x+14}px,${y+13}px,0)`;};
+      const move=e=>{if(e.pointerType && e.pointerType!=='mouse')return;x=e.clientX;y=e.clientY;if(!raf)raf=requestAnimationFrame(()=>{raf=0;setPos();});};
+      const laugh=()=>{setPos();el.classList.remove('sc-spin');void el.offsetWidth;el.classList.add('sc-spin');clearTimeout(laugh._t);laugh._t=setTimeout(()=>{el.classList.remove('sc-spin');setPos()},840);};
+      window.addEventListener('mousemove',move,{passive:true});
+      window.addEventListener('pointermove',move,{passive:true});
+      window.addEventListener('mousedown',laugh,{passive:true});
+      window.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')laugh()},{passive:true});
+      setPos();
+    }catch(e){try{console.warn('cursor laugh init failed',e)}catch{}}
+  })();
 })();
 </script>
 <script type="text/plain" id="python-source">
 # Secure Chat Python Bridge Source
 def summarize_messages(messages):
     return {"count": len(messages), "preview": [str(x)[:160] for x in messages[-20:]]}
+</script>
+<script>
+/* Secure Chat group/call compatibility layer v2 */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const esc2=v=>typeof esc==='function'?esc(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const toast2=(m)=>{try{toast(m)}catch{}};
+  const uid2=()=>Math.random().toString(36).slice(2,8).toUpperCase()+Date.now().toString(36).slice(-4).toUpperCase();
+
+  function makeServerId(){
+    // ServerID is independent from the UI input: it embeds the host PeerID so joiners
+    // can locate the room through the existing signaling service without a second server.
+    return 'SCG-'+String(state.id)+'-'+uid2().slice(0,6);
+  }
+  function validServerId(id){return /^SCG-\d{6}-[A-Z0-9]{6}$/.test(String(id||'').trim().toUpperCase());}
+  function serverOwnerPeer(id){const m=String(id||'').trim().toUpperCase().match(/^SCG-(\d{6})-[A-Z0-9]{6}$/);return m?m[1]:null;}
+
+  // Full-screen group chat overlay, leaving the normal chat UI untouched underneath.
+  function ensureGroupFS(){
+    if($('groupFullScreen')) return $('groupFullScreen');
+    const el=document.createElement('section');
+    el.id='groupFullScreen';
+    el.innerHTML=`<div class="sc-group-head"><button type="button" class="btn" id="groupFsBack">← 戻る</button><div class="sc-group-title"><strong id="groupFsName">グループ</strong><small id="groupFsServer">ServerID: ----</small></div><button type="button" class="btn" id="groupFsClose">閉じる</button></div><div id="groupFsMembers" class="sc-group-members"></div><div id="groupFsChat" class="sc-group-chat"></div><form id="groupFsComposer" class="sc-group-composer"><input id="groupFsInput" autocomplete="off" placeholder="メッセージを入力"><button type="submit" class="btn primary">送信</button></form></section>`;
+    document.body.appendChild(el);
+    const style=document.createElement('style');
+    style.textContent=`
+      #groupFullScreen{position:fixed;inset:0;z-index:9999;background:var(--surface,#fff);display:none;grid-template-rows:auto auto 1fr auto;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+      #groupFullScreen.show{display:grid}
+      .sc-group-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line,#e5e7eb);background:var(--surface,#fff)}
+      .sc-group-title{flex:1;min-width:0;display:flex;flex-direction:column}.sc-group-title strong,.sc-group-title small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .sc-group-members{display:flex;gap:6px;overflow:auto;padding:7px 10px;border-bottom:1px solid var(--line,#e5e7eb);background:var(--surface2,#f7f8fa)}
+      .sc-group-members span{font-size:12px;padding:4px 8px;border-radius:999px;background:var(--surface3,#eef1f4);white-space:nowrap}
+      .sc-group-chat{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px}
+      .sc-group-row{display:flex;margin:6px 0}.sc-group-row.mine{justify-content:flex-end}.sc-group-bubble{max-width:min(80%,680px);padding:8px 10px;border-radius:14px;background:var(--surface2,#f7f8fa)}.sc-group-row.mine .sc-group-bubble{background:var(--green,#06c755);color:#fff}.sc-group-from{font-size:11px;opacity:.72;margin-bottom:3px}.sc-group-text{white-space:pre-wrap;word-break:break-word}.sc-group-meta{font-size:10px;opacity:.65;margin-top:4px}
+      .sc-group-composer{display:flex;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line,#e5e7eb);background:var(--surface,#fff)}
+      .sc-group-composer input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line,#d1d5db);border-radius:12px;background:var(--surface2,#f7f8fa);color:inherit;font-size:16px}
+    `;
+    document.head.appendChild(style);
+    $('groupFsBack').onclick=()=>closeGroupFS();
+    $('groupFsClose').onclick=()=>leaveOrCloseGroupFS();
+    $('groupFsComposer').onsubmit=async e=>{e.preventDefault();const g=state.groups.find(x=>x.id===state.selectedGroup);const inp=$('groupFsInput');const text=String(inp?.value||'').trim();if(!g||!text)return;await sendGroupMessageV2(g,text);inp.value='';renderGroupFS(g);};
+    return el;
+  }
+
+  function groupMemberName(id){return callDisplayName?callDisplayName(id):contactName(id)}
+  function renderGroupFS(group){
+    const el=ensureGroupFS();
+    state.selectedGroup=group.id; state.selected=null;
+    $('topAvatar').textContent='👥'; $('topName').textContent=group.name; setTopStatus(`${Math.max(1,(group.peers||[]).length)}人`);
+    $('groupFsName').textContent=group.name;
+    $('groupFsServer').textContent='ServerID: '+(group.serverId||'----');
+    const members=[group.owner,...(group.peers||[])].filter((v,i,a)=>v&&a.indexOf(v)===i);
+    $('groupFsMembers').innerHTML=members.map(id=>`<span>${esc2(id===group.owner?'👑 ':'')}${esc2(groupMemberName(id))}</span>`).join('');
+    const msgs=state.chats.filter(m=>m.groupId===group.id).slice().sort((a,b)=>a.time-b.time);
+    $('groupFsChat').innerHTML=msgs.length?msgs.map(m=>`<div class="sc-group-row ${m.from===state.id?'mine':''}"><div class="sc-group-bubble"><div class="sc-group-from">${esc2(groupMemberName(m.from))}</div><div class="sc-group-text">${esc2(m.text||'')}</div><div class="sc-group-meta">${esc2(formatTime(m.time))}</div></div></div>`).join(''):`<div class="empty">グループメッセージはまだありません。</div>`;
+    const box=$('groupFsChat'); requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
+  }
+  function openGroupFS(group){ensureGroupFS().classList.add('show');renderGroupFS(group);setTimeout(()=>$('groupFsInput')?.focus(),50)}
+  function closeGroupFS(){ensureGroupFS().classList.remove('show');}
+  async function leaveOrCloseGroupFS(){
+    const g=state.groups.find(x=>x.id===state.selectedGroup); if(!g){closeGroupFS();return;}
+    if(g.owner===state.id){
+      for(const peer of (g.peers||[])){try{if(isLiveDataPeer(peer))await sendControlObject(peer,{type:'group-closed',serverId:g.serverId,groupId:g.id});}catch{}}
+      state.groups=state.groups.filter(x=>x.id!==g.id); try{await db?.delete('groups',g.id)}catch{}
+      closeGroupFS(); renderList(); toast2('グループを閉じました');
+    }else{
+      const owner=g.owner; try{if(isLiveDataPeer(owner))await sendControlObject(owner,{type:'group-leave',serverId:g.serverId,groupId:g.id,peer:state.id});}catch{}
+      state.groups=state.groups.filter(x=>x.id!==g.id); try{await db?.delete('groups',g.id)}catch{}
+      closeGroupFS(); renderList(); toast2('グループから退出しました');
+    }
+  }
+
+  async function createGroupV2(name){
+    const group={id:typeof uid==='function'?uid('group'):('group-'+uid2()),name:name||'グループ',serverId:makeServerId(),owner:state.id,peers:[],created:now()};
+    state.groups.push(group); if(state.storageReady)try{await db.put('groups',group)}catch{}
+    renderList(); openGroupFS(group); toast2('👥 グループを作成しました ServerID: '+group.serverId);
+    return group;
+  }
+  async function joinGroupV2(serverId){
+    const sid=String(serverId||'').trim().toUpperCase(); if(!validServerId(sid)){toast2('ServerIDが正しくありません');return false}
+    if(sid===serverId && !serverOwnerPeer(sid)) return false;
+    const owner=serverOwnerPeer(sid); if(!owner || owner===state.id){toast2(owner===state.id?'自分が作成したServerIDです':'ServerIDが無効です');return false}
+    try{
+      const c=await ensureDataConnection(owner); await waitForRTCConnected(c,12000);
+      await sendControlObject(owner,{type:'group-join',serverId:sid,name:state.name});
+      toast2('グループへの参加要求を送信しました');
+      return true;
+    }catch(e){toast2('グループ参加失敗: '+(e?.message||String(e)));return false}
+  }
+
+  async function sendGroupMessageV2(group,text){
+    const message=baseMessage(group.id,text); message.groupId=group.id; message.from=state.id;
+    await storeMessage(message);
+    const peers=[...new Set([...(group.peers||[]),group.owner].filter(p=>p&&p!==state.id))];
+    for(const peer of peers){
+      try{
+        if(!isLiveDataPeer(peer)) continue;
+        await sendControlObject(peer,{type:'group-chat',groupId:group.id,serverId:group.serverId,text,from:state.id,messageId:message.id,author:state.name});
+      }catch{}
+    }
+    renderList();
+  }
+
+  const prevRecv=window.receivePacket;
+  if(typeof prevRecv==='function'&&!prevRecv.__groupV2){
+    const recv=async function(remote,obj){
+      try{
+        if(obj?.type==='group-join'){
+          const group=state.groups.find(g=>g.owner===state.id&&g.serverId===String(obj.serverId||'').toUpperCase());
+          if(!group)return;
+          if(!group.peers.includes(remote))group.peers.push(remote);
+          group.lastJoin=Date.now();
+          try{await db?.put('groups',group)}catch{}
+          try{await sendControlObject(remote,{type:'group-joined',group})}catch{}
+          for(const peer of group.peers.filter(p=>p!==remote)){try{await sendControlObject(peer,{type:'group-members',groupId:group.id,serverId:group.serverId,peers:group.peers})}catch{}}
+          renderList(); return;
+        }
+        if(obj?.type==='group-joined'){
+          const group=obj.group; if(!group||group.serverId!==String(obj.group?.serverId||'').toUpperCase())return;
+          if(!state.groups.some(g=>g.id===group.id)){state.groups.push(group);try{await db?.put('groups',group)}catch{}}
+          openGroupFS(group); return;
+        }
+        if(obj?.type==='group-members'){
+          const g=state.groups.find(x=>x.id===obj.groupId&&x.serverId===String(obj.serverId||'').toUpperCase()); if(g){g.peers=[...new Set(obj.peers||[])];try{await db?.put('groups',g)}catch{};if($('groupFullScreen')?.classList.contains('show'))renderGroupFS(g)} return;
+        }
+        if(obj?.type==='group-closed'){
+          const i=state.groups.findIndex(x=>x.id===obj.groupId&&x.serverId===obj.serverId); if(i>=0){state.groups.splice(i,1);try{await db?.delete('groups',obj.groupId)}catch{};if(state.selectedGroup===obj.groupId)closeGroupFS();renderList();toast2('グループが閉じられました')} return;
+        }
+        if(obj?.type==='group-leave'){
+          const g=state.groups.find(x=>x.owner===state.id&&x.id===obj.groupId&&x.serverId===obj.serverId); if(g){g.peers=g.peers.filter(p=>p!==remote);try{await db?.put('groups',g)}catch{};return}
+        }
+        if(obj?.type==='group-chat'){
+          const g=state.groups.find(x=>x.id===obj.groupId&&x.serverId===obj.serverId); if(!g)return;
+          if(remote!==g.owner && g.owner!==state.id) return;
+          const msg={...(obj.message||{}),id:obj.messageId||obj.message?.id||uid('msg'),peer:g.id,groupId:g.id,from:obj.from||remote,to:state.id,text:String(obj.text||'')};
+          await storeMessage(msg);
+          // Owner is the relay: forward once to all participants except sender.
+          if(g.owner===state.id){for(const peer of g.peers.filter(p=>p!==msg.from)){try{if(isLiveDataPeer(peer))await sendControlObject(peer,{type:'group-chat',groupId:g.id,serverId:g.serverId,text:msg.text,from:msg.from,messageId:msg.id,author:obj.author||groupMemberName(msg.from)})}catch{}}}
+          if(state.selectedGroup===g.id)renderGroupFS(g); renderList(); notifyIncoming(msg); return;
+        }
+      }catch(e){addLog('ERROR','group v2',e?.message||String(e))}
+      return prevRecv(remote,obj);
+    };
+    recv.__groupV2=true; window.receivePacket=recv; try{receivePacket=recv}catch{}
+  }
+
+  window.openGroup=function(){
+    if(typeof featureOn==='function'&&!featureOn('groups')){toast2('グループをONにしてください');return;}
+    showModal(`<h3>👥 グループ</h3><div class="field"><label>グループ名</label><input id="groupNameV2" maxlength="40" placeholder="Secure Chat Group"></div><div class="field"><label>ServerIDで参加</label><input id="groupServerIdV2" maxlength="16" placeholder="SCG-123456-ABC123" autocapitalize="characters"></div><div class="subtle">グループ作成者が中央リレー役になります。作成時に生成されたServerIDは、そのグループを閉じるまで固定です。参加者はPeer IDを入力しません。</div><div class="actions"><button class="btn" id="groupJoinV2">ServerIDで参加</button><button class="btn primary" id="groupCreateV2">グループを作成</button><button class="btn" data-close>キャンセル</button></div>`);
+    $('groupCreateV2').onclick=async()=>{const g=await createGroupV2($('groupNameV2').value.trim());closeModal();openGroupFS(g)};
+    $('groupJoinV2').onclick=async()=>{await joinGroupV2($('groupServerIdV2').value.trim())};
+  };
+  window.renderGroup=renderGroupFS;
+  window.createGroup=createGroupV2;
+
+  // Ensure incoming calls always use a username-like label, never raw Peer ID.
+  const oldCallDisplay=window.callDisplayName;
+  window.callDisplayName=(remote,metadata={})=>{const meta=String(metadata?.name||'').trim();if(meta&&meta!==remote)return meta;const local=contactName(remote);if(local&&local!==remote)return local;return 'ユーザー'};
+
+  // Re-open group creation after startup so only this feature changes its own UI.
+  setTimeout(()=>{try{ensureGroupFS()}catch{}},0);
+})();
 </script>
 </body>
 </html>
