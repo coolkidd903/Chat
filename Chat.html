@@ -35,7 +35,8 @@ button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
 .app{
-  height:100dvh;
+  height:var(--sc-vvh,100dvh);
+  min-height:0;
   display:grid;
   grid-template-columns:330px minmax(0,1fr);
 }
@@ -158,8 +159,11 @@ button{cursor:pointer}
 }
 .main{
   min-width:0;
-  display:grid;
-  grid-template-rows:64px auto minmax(0,1fr) auto;
+  min-height:0;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
 }
 .topbar{
   background:var(--surface);
@@ -206,6 +210,7 @@ button{cursor:pointer}
   background:#f1f3f5;
 }
 .actionbar{
+  flex:0 0 auto;
   display:none;
   flex-wrap:wrap;
   gap:7px;
@@ -221,8 +226,12 @@ button{cursor:pointer}
   font-size:12px;
 }
 .chat{
+  flex:1 1 auto;
   min-height:0;
   overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   padding:14px;
   display:flex;
   flex-direction:column;
@@ -346,6 +355,10 @@ button{cursor:pointer}
   background:#fff;
   border-radius:12px;
   font-size:11px;
+}
+.composer-wrap{
+  flex:0 0 auto;
+  padding-bottom:env(safe-area-inset-bottom);
 }
 .composer{
   display:flex;
@@ -717,6 +730,19 @@ button{cursor:pointer}
 .test-ok{color:#166534}.test-warn{color:#92400e}
 #myId[data-peer-id],#topPeerId[data-peer-id]{visibility:visible!important;opacity:1!important;color:var(--ink)!important}
 @media(max-width:760px){.peer-connect-row{gap:5px}.list-connect{padding:4px 6px}.profile-card{grid-template-columns:64px 1fr}.profile-avatar{width:64px;height:64px}}
+
+/* iPad / Safari viewport + keyboard stability */
+html,body{min-height:100%;}
+@supports (-webkit-touch-callout:none){
+  body{-webkit-text-size-adjust:100%;}
+  .app{height:var(--sc-vvh,100dvh);}
+}
+@media(max-width:900px){
+  .main{height:var(--sc-vvh,100dvh);min-height:0;}
+  .chat{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+  .composer{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));}
+  .composer textarea{max-height:28dvh;}
+}
 </style>
 </head>
 
@@ -793,13 +819,6 @@ button{cursor:pointer}
       </button>
     </div>
 
-    <div class="direct-peer-side">
-      <div class="direct-peer-label">🔗 Peer IDで直接接続</div>
-      <div class="direct-peer-row">
-        <input id="directPeerSidebarInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="相手の6桁Peer ID">
-        <button class="btn primary" id="directPeerSidebarGo" type="button">接続</button>
-      </div>
-    </div>
     <div id="list" class="list"></div>
   </aside>
 
@@ -821,13 +840,9 @@ button{cursor:pointer}
         <button class="iconbtn ai-wide-btn" id="aiBtn" title="SecureAI">🤖 SecureAI</button>
         <button class="iconbtn" id="settingsBtn" title="設定">⚙️</button>
         <button class="iconbtn" id="searchBtn" title="検索">🔎</button>
-        <button class="iconbtn" id="backupBtn" title="バックアップ">💾</button>
-        <button class="iconbtn" id="logBtn" title="ログ">📜</button>
-        <button class="iconbtn" id="iceBtn" title="ICE診断">🧪</button>
         <button class="iconbtn" id="groupBtn" title="グループ">👥</button>
         <button class="iconbtn" id="friendBtn" title="フレンド追加">＋</button>
         <button class="iconbtn" id="callBtn" title="ビデオ通話">📹</button>
-        <button class="iconbtn" id="testBtn" title="動作確認">🩺</button>
       </div>
 
     </header>
@@ -7174,36 +7189,21 @@ function openSettings(
     </div>
 
 
+    <div class="card" style="margin-top:14px">
+      <b>🛠️ メンテナンス / 診断</b>
+      <small>チャット画面をすっきりさせるため、診断・ログ・バックアップなどの管理機能はここにまとめています。</small>
+      <div class="actions" style="justify-content:flex-start;margin-top:10px">
+        <button class="btn" id="portTest">接続先診断</button>
+        <button class="btn" id="iceFromSettings">ICE診断</button>
+        <button class="btn" id="openLogsFromSettings">📜 ログ</button>
+        <button class="btn" id="backupFromSettings">💾 バックアップ</button>
+        <button class="btn" id="featureDiagFromSettings">🩺 動作チェック</button>
+      </div>
+    </div>
+
     <div class="actions">
-
-      <button
-        class="btn"
-        id="portTest"
-      >
-        接続先診断
-      </button>
-
-      <button
-        class="btn"
-        id="iceFromSettings"
-      >
-        ICE診断
-      </button>
-
-      <button
-        class="btn"
-        data-close
-      >
-        閉じる
-      </button>
-
-      <button
-        class="btn primary"
-        id="saveSettings"
-      >
-        保存して再接続
-      </button>
-
+      <button class="btn" data-close>閉じる</button>
+      <button class="btn primary" id="saveSettings">保存して再接続</button>
     </div>
   `);
 
@@ -11084,9 +11084,6 @@ $('profileBtn').onclick=
 $('directConnectBtn').onclick=
   ()=>connectDirectPeer();
 
-$('testBtn').onclick=
-  openSelfTest;
-
 $('copyId').onclick=
   async()=>{
     const ok=
@@ -11208,68 +11205,6 @@ $('fileInput').onchange=
 
 $('searchBtn').onclick=
   openSearch;
-
-$('backupBtn').onclick=
-  openBackup;
-
-$('logBtn').onclick=
-  ()=>{
-    showModal(`
-      <h3>📜 Secure Chat ログ</h3>
-
-      <p class="help">
-        接続・ICE・WebRTC・通話・AI・バックアップ等を記録します。
-        メッセージ本文、暗号鍵、パスフレーズはログへ保存しません。
-      </p>
-
-      <div id="logView" class="logbox"></div>
-
-      <div class="actions">
-        <button class="btn" id="copyLogs">
-          コピー
-        </button>
-
-        <button class="btn danger" id="clearLogs">
-          消去
-        </button>
-
-        <button class="btn" data-close>
-          閉じる
-        </button>
-      </div>
-    `);
-
-    refreshLogView();
-
-    $('copyLogs').onclick=
-      async()=>{
-        await copyText(
-          $('logView').textContent
-        );
-
-        toast(
-          'ログをコピーしました'
-        );
-      };
-
-    $('clearLogs').onclick=
-      async()=>{
-        state.logs=[];
-
-        await db.clear(
-          'logs'
-        ).catch(()=>{});
-
-        $('logView').textContent='';
-
-        toast(
-          'ログを消去しました'
-        );
-      };
-  };
-
-$('iceBtn').onclick=
-  runICEDiagnostic;
 
 $('micBtn').onclick=
   toggleMic;
@@ -11794,14 +11729,15 @@ boot();
 
   // Reliable logs dialog.
   window.openLogsStable=function(){
-    showModal('<h3>📜 Secure Chat ログ</h3><p class="help">接続・WebRTC・AI・DBなどのログです。本文・暗号鍵・パスフレーズは記録しません。</p><div id="logView" class="logbox"></div><div class="actions"><button class="btn" id="copyLogsStable">コピー</button><button class="btn danger" id="clearLogsStable">消去</button><button class="btn" data-close>閉じる</button></div>');
-    refreshLogView();
-    $id('copyLogsStable').onclick=async()=>toast((await copyText($id('logView').textContent))?'ログをコピーしました':'コピーできませんでした');
-    $id('clearLogsStable').onclick=async()=>{state.logs=[];await db.clear('logs').catch(()=>{});$id('logView').textContent='';toast('ログを消去しました')};
+    showModal('<h3>📜 Secure Chat ログ</h3><p class="help">接続・WebRTC・AI・DBなどのログです。本文・暗号鍵・パスフレーズは記録しません。</p><div id="logViewStable" class="logbox"></div><div class="actions"><button class="btn" id="copyLogsStable">コピー</button><button class="btn danger" id="clearLogsStable">消去</button><button class="btn" data-close>閉じる</button></div>');
+    const refreshStable=()=>{const el=$id('logViewStable');if(!el)return;el.textContent=(state.logs||[]).map(x=>`[${new Date(x.time||Date.now()).toLocaleTimeString()}] ${x.level||'INFO'} ${x.type||''} ${x.detail||''}`).join('\n')};
+    refreshStable();
+    $id('copyLogsStable').onclick=async()=>toast((await copyText($id('logViewStable').textContent))?'ログをコピーしました':'コピーできませんでした');
+    $id('clearLogsStable').onclick=async()=>{state.logs=[];await db.clear('logs').catch(()=>{});refreshStable();toast('ログを消去しました')};
   };
 
   // Comprehensive button/API health check.
-  const buttonSpecs={settingsBtn:'設定',aiBtn:'AI',openAiQuick:'AI',searchBtn:'検索',backupBtn:'バックアップ',logBtn:'ログ',iceBtn:'ICE診断',groupBtn:'グループ',friendBtn:'フレンド追加',callBtn:'通話',copyId:'IDコピー',nameBtn:'名前',profileBtn:'プロフィール',inviteBtn:'招待',directConnectBtn:'直接Peer接続',directPeerSidebarGo:'Peer接続',testBtn:'動作確認'};
+  const buttonSpecs={settingsBtn:'設定',aiBtn:'AI',openAiQuick:'AI',searchBtn:'検索',groupBtn:'グループ',friendBtn:'フレンド追加',callBtn:'通話',copyId:'IDコピー',nameBtn:'名前',profileBtn:'プロフィール',inviteBtn:'招待',directConnectBtn:'直接Peer接続'};
   function audit(){
     const rows=[];
     for(const [id,label] of Object.entries(buttonSpecs)){
@@ -11851,8 +11787,8 @@ boot();
   // Canonical event wiring: direct onclick assignments are idempotent.
   function bindStatic(){
     const handlers={
-      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),backupBtn:()=>openBackup(),logBtn:()=>openLogsStable(),iceBtn:()=>runICEDiagnostic(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),
-      copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),nameBtn:()=>openName(),profileBtn:()=>openProfileSettings(),inviteBtn:()=>openInvite(),directConnectBtn:()=>directConnectStable($id('directPeerId')?.value),directPeerSidebarGo:()=>directConnectStable($id('directPeerSidebarInput')?.value),testBtn:()=>openFeatureDiagnostics()
+      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),
+      copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),nameBtn:()=>openName(),profileBtn:()=>openProfileSettings(),inviteBtn:()=>openInvite(),directConnectBtn:()=>directConnectStable($id('directPeerId')?.value)
     };
     for(const [id,fn] of Object.entries(handlers)){
       const e=$id(id); if(!e)continue;
@@ -11869,7 +11805,18 @@ boot();
       btn.dataset.scBound='1';
     });
     wireDirect('directPeerId','directConnectBtn');
-    wireDirect('directPeerSidebarInput','directPeerSidebarGo');
+    const utilityHandlers={
+      openLogsFromSettings:()=>openLogsStable(),
+      backupFromSettings:()=>openBackup(),
+      featureDiagFromSettings:()=>openFeatureDiagnostics(),
+      portTest:()=>testPorts(),
+      iceFromSettings:()=>runICEDiagnostic()
+    };
+    for(const [id,fn] of Object.entries(utilityHandlers)){
+      const e=$id(id); if(!e)continue;
+      e.onclick=ev=>{ev.preventDefault();safe(fn,id)};
+      e.dataset.scBound='1';
+    }
     syncPeerIdUI();
   }
 
@@ -11894,11 +11841,27 @@ boot();
   }
   window.SecureChatCanary={tick:canaryTick,state:CANARY};
 
+  // iPad/Safari visual viewport: keep the composer above the software keyboard.
+  function syncVisualViewport(){
+    const h=window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--sc-vvh',Math.max(320,Math.round(h))+'px');
+  }
+  syncVisualViewport();
+  window.visualViewport?.addEventListener('resize',syncVisualViewport);
+  window.visualViewport?.addEventListener('scroll',syncVisualViewport);
+  window.addEventListener('orientationchange',()=>setTimeout(syncVisualViewport,180));
+
   // Ensure stale screen-share artifacts are gone.
   ensurePassphraseDock();
   ensurePeerIdentity();
   syncPeerIdUI();
   bindStatic();
+  // Settings modal is created dynamically; wire its maintenance controls when they appear.
+  const settingsObserver=new MutationObserver(()=>{
+    const map={openLogsFromSettings:()=>openLogsStable(),backupFromSettings:()=>openBackup(),featureDiagFromSettings:()=>openFeatureDiagnostics(),portTest:()=>testPorts(),iceFromSettings:()=>runICEDiagnostic()};
+    for(const [id,fn] of Object.entries(map)){const e=$id(id);if(e&&e.dataset.scBound!=='1'){e.onclick=ev=>{ev.preventDefault();safe(fn,id)};e.dataset.scBound='1';}}
+  });
+  settingsObserver.observe(document.body,{childList:true,subtree:true});
   setTimeout(()=>{try{rebuildAIKnowledgeStable().then(n=>addLog('INFO','AI DB rebuilt',String(n))).catch(e=>addLog('WARN','AI DB rebuild',e?.message||String(e)))}catch{}},1000);
   setTimeout(()=>{const el=$id('topStatus');if(el&&!state.wsReady&&/初期化中|接続確認中|接続中/.test(el.textContent||''))el.textContent='オフライン（シグナリング未接続）'},1500);
   setTimeout(()=>{try{ensurePeerIdentity();renderDynamicUI()}catch{};bindStatic();syncPeerIdUI()},1200);
