@@ -843,6 +843,7 @@ html,body{min-height:100%;}
         <button class="iconbtn" id="groupBtn" title="グループ">👥</button>
         <button class="iconbtn" id="friendBtn" title="フレンド追加">＋</button>
         <button class="iconbtn" id="callBtn" title="ビデオ通話">📹</button>
+        <button class="iconbtn" id="notificationBtn" title="通知">🔔</button>
       </div>
 
     </header>
@@ -2174,7 +2175,7 @@ function connectSignal(){
       index>=ports.length
     ){
       setTopStatus(
-        'シグナリング接続失敗'
+        navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続'
       );
 
       addLog(
@@ -2245,7 +2246,7 @@ function connectSignal(){
             next();
           }else{
             state.wsReady=false;
-            setTopStatus('シグナリング接続タイムアウト');
+            setTopStatus(navigator.onLine===false ? 'オフライン（端末ネットワーク）' : 'オンライン · シグナリング未接続');
             addLog('WARN','WebSocket timeout',`port=${port}`);
             monitorSecurity();
           }
@@ -2887,7 +2888,7 @@ async function createOffer(
     offer
   );
 
-  signalSend({
+  const sent=signalSend({
     type:'OFFER',
     dst:c.remote,
     payload:{
@@ -2897,6 +2898,7 @@ async function createOffer(
       metadata:c.metadata
     }
   });
+  if(!sent) throw new Error('シグナリング未接続のためPeer接続を開始できません');
 }
 
 async function tryRestartIce(c){
@@ -2999,7 +3001,7 @@ async function handleOffer(
       answer
     );
 
-    signalSend({
+    const sentAnswer=signalSend({
       type:'ANSWER',
       dst:remote,
       payload:{
@@ -3008,6 +3010,7 @@ async function handleOffer(
         sdp:c.pc.localDescription
       }
     });
+    if(!sentAnswer) throw new Error('シグナリング未接続のため応答を送信できません');
 
     if(
       c.kind==='media'
@@ -3199,6 +3202,47 @@ async function deleteMessagePermanent(
   }
 }
 
+function isLiveDataPeer(remote){
+  const c=findDataConnection(remote);
+  return !!(c && c.pc && c.pc.connectionState==='connected' && c.control?.readyState==='open');
+}
+window.isLiveDataPeer=isLiveDataPeer;
+
+function dropRTCConnection(c){
+  if(!c)return;
+  try{c.control?.close()}catch{}
+  try{c.file?.close()}catch{}
+  try{c.pc?.close()}catch{}
+  for(const [key,val] of state.connections.entries()){
+    if(val===c) state.connections.delete(key);
+  }
+}
+
+function waitForRTCConnected(c,timeout=12000){
+  if(c?.pc?.connectionState==='connected' && c.control?.readyState==='open') return Promise.resolve(c);
+  return new Promise((resolve,reject)=>{
+    const start=Date.now();
+    let done=false;
+    const finish=(ok,err)=>{
+      if(done)return; done=true;
+      clearInterval(timer);
+      try{c?.pc?.removeEventListener('connectionstatechange',onState)}catch{}
+      ok?resolve(c):reject(err||new Error('P2P接続を確認できませんでした'));
+    };
+    const onState=()=>{
+      const stateNow=c?.pc?.connectionState;
+      if(stateNow==='connected' && c?.control?.readyState==='open') finish(true);
+      else if(stateNow==='failed'||stateNow==='closed') finish(false,new Error('相手のPeer IDとP2P接続できませんでした'));
+    };
+    const timer=setInterval(()=>{
+      onState();
+      if(!done && Date.now()-start>timeout) finish(false,new Error('Peer IDが存在しないか、相手がオフラインです'));
+    },120);
+    try{c?.pc?.addEventListener('connectionstatechange',onState)}catch{}
+    onState();
+  });
+}
+
 async function sendText(){
   const peer=
     state.selected;
@@ -3207,6 +3251,11 @@ async function sendText(){
     toast(
       '相手を選択してください'
     );
+    return;
+  }
+
+  if(!isLiveDataPeer(peer)){
+    toast('このPeerとはP2P接続されていません');
     return;
   }
 
@@ -9297,13 +9346,28 @@ function avatarText(
 function setTopStatus(
   text
 ){
-  $('topStatus').textContent=
-    String(text||'');
+  const el=$('topStatus');
+  if(!el)return;
+  el.textContent=String(text||'');
+  // Browser network state and signaling state are different things.
+  // A blocked/unavailable signaling WebSocket must not make the whole app
+  // claim that the device itself is offline.
+  el.className=(navigator.onLine===false)?'danger-text':'online';
+}
 
-  $('topStatus').className=
-    state.wsReady
-      ?'online'
-      :'danger-text';
+function refreshNetworkStatus(){
+  const el=$('topStatus');
+  if(!el)return;
+  if(navigator.onLine===false){
+    setTopStatus('オフライン（端末ネットワーク）');
+    return;
+  }
+  if(state.wsReady){
+    const port=state.activeEndpoint?.port;
+    setTopStatus(port?`オンライン · シグナリング接続済み ${port}`:'オンライン · シグナリング接続済み');
+  }else{
+    setTopStatus('オンライン · シグナリング未接続');
+  }
 }
 
 function renderDynamicUI(){
@@ -9342,22 +9406,6 @@ function renderDynamicUI(){
   ){
     actions.push(
       ['search','🔎 検索']
-    );
-  }
-
-  if(
-    featureOn('backup')
-  ){
-    actions.push(
-      ['backup','💾 バックアップ']
-    );
-  }
-
-  if(
-    featureOn('advancedDiagnostics')
-  ){
-    actions.push(
-      ['diagnostics','📊 診断']
     );
   }
 
@@ -9426,17 +9474,6 @@ function renderDynamicUI(){
               openSearch();
             }
 
-            if(
-              action==='backup'
-            ){
-              openBackup();
-            }
-
-            if(
-              action==='diagnostics'
-            ){
-              openStatus();
-            }
           };
       }
     );
@@ -11079,7 +11116,10 @@ $('nameBtn').onclick=
   openName;
 
 $('profileBtn').onclick=
-  openProfileSettings;
+  ()=>{
+    if(typeof openProfileSettings==='function') openProfileSettings();
+    else toast('プロフィール機能を読み込み中です');
+  };
 
 $('directConnectBtn').onclick=
   ()=>connectDirectPeer();
@@ -11565,6 +11605,7 @@ boot();
 (function(){
   'use strict';
   const $id=id=>document.getElementById(id);
+  window.__secureChatStabilityStarted=true;
   const safe=(fn,label)=>{try{return fn()}catch(e){try{addLog('ERROR',label,e?.message||String(e))}catch{};try{toast(label+'に失敗しました')}catch{};return null}};
 
   // Everything is available by default. Only richText/translation remain user toggles.
@@ -11587,7 +11628,7 @@ boot();
     wrap.innerHTML='<div style="font-size:11px;color:#667085;margin-bottom:6px">🔐 共有パスフレーズ</div><div class="peer-connect-row"><input id="passphraseInputStable" type="password" autocomplete="current-password" placeholder="相手と同じパスフレーズ"><button class="btn primary" id="passphraseSaveStable" type="button">保存</button></div><small id="passphraseStateStable">'+(configured?'設定済み（入力内容は表示しません）':'未設定')+'</small>';
     me.insertAdjacentElement('afterend',wrap);
     const input=$id('passphraseInputStable'),button=$id('passphraseSaveStable');
-    button.addEventListener('click',()=>{
+    button.onclick=()=>{
       const value=String(input.value||'');
       if(!value){toast('パスフレーズを入力してください');return;}
       localSet(APP.keys.password,value);
@@ -11595,8 +11636,8 @@ boot();
       $id('passphraseStateStable').textContent='設定済み（入力内容は表示しません）';
       addLog('INFO','passphrase updated');
       toast('共有パスフレーズを保存しました');
-    });
-    input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();button.click()}});
+    };
+    input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();button.click()}};
   }
 
   // Direct Peer ID, for both desktop and narrow layouts.
@@ -11604,9 +11645,21 @@ boot();
     const id=String(value||'').replace(/\D/g,'').slice(0,6);
     if(!/^\d{6}$/.test(id)){toast('6桁のPeer IDを入力してください');return false;}
     if(id===state.id){toast('自分自身には接続できません');return false;}
-    try{selectPeer(id)}catch{}
-    try{await ensureDataConnection(id);toast('P2P接続要求を送信しました');return true;}
-    catch(e){addLog('WARN','direct peer',e?.message||String(e));toast('接続失敗: '+(e?.message||'不明なエラー'));return false}
+    if(!state.wsReady){toast('シグナリング未接続です。少し待ってから再試行してください');return false;}
+    try{
+      const c=await ensureDataConnection(id);
+      await waitForRTCConnected(c,12000);
+      selectPeer(id);
+      renderDynamicUI();
+      toast('✅ '+id+' とP2P接続しました');
+      return true;
+    }catch(e){
+      addLog('WARN','direct peer',e?.message||String(e));
+      const c=findDataConnection(id);
+      if(c && !isLiveDataPeer(id)) dropRTCConnection(c);
+      toast('接続できません: '+(e?.message||'相手がオフライン、またはPeer IDが存在しません'));
+      return false;
+    }
   }
   window.directConnect=directConnectStable;
   function wireDirect(inputId,buttonId){
@@ -11716,7 +11769,7 @@ boot();
     return String(answer);
   }
   window.openAIKeyOnly=openAIKeyOnlyStable;
-  if(LocalAI?.generate&&!LocalAI.generate.__stableKeyOnly){
+  if(typeof LocalAI!=='undefined' && LocalAI?.generate&&!LocalAI.generate.__stableKeyOnly){
     const originalGenerate=LocalAI.generate.bind(LocalAI);
     const patched=async(q,img='')=>{
       if(String(state.settings.openaiApiKey||state.settings.aiApiKey||'').trim()){
@@ -11737,7 +11790,7 @@ boot();
   };
 
   // Comprehensive button/API health check.
-  const buttonSpecs={settingsBtn:'設定',aiBtn:'AI',openAiQuick:'AI',searchBtn:'検索',groupBtn:'グループ',friendBtn:'フレンド追加',callBtn:'通話',copyId:'IDコピー',nameBtn:'名前',profileBtn:'プロフィール',inviteBtn:'招待',directConnectBtn:'直接Peer接続'};
+  const buttonSpecs={settingsBtn:'設定',aiBtn:'AI',openAiQuick:'AI',searchBtn:'検索',groupBtn:'グループ',friendBtn:'フレンド追加',callBtn:'通話',notificationBtn:'通知',copyId:'IDコピー',nameBtn:'名前',profileBtn:'プロフィール',inviteBtn:'招待',directConnectBtn:'直接Peer接続',passphraseSaveStable:'パスフレーズ保存',cancelReply:'返信/編集取消',attachBtn:'添付',emojiBtn:'絵文字',send:'送信',micBtn:'マイク',camBtn:'カメラ',wakeBtn:'Wake Lock',hangBtn:'通話終了'};
   function audit(){
     const rows=[];
     for(const [id,label] of Object.entries(buttonSpecs)){
@@ -11769,7 +11822,8 @@ boot();
       ['AI DB',Array.isArray(state.aiIndex),`${state.aiIndex?.length||0}件`],
       ['ステッカーDB',Array.isArray(state.stickers),`${state.stickers?.length||0}件`],
       ['Peer ID',/^\d{6}$/.test(state.id),state.id],
-      ['カナリア',!!window.SecureChatCanary,'10秒監視']
+      ['カナリア',!!window.SecureChatCanary,'10秒監視'],
+      ['P2P接続の送信ガード',typeof isLiveDataPeer==='function','未接続Peerへのチャット送信を拒否']
     ];
     const rows=audit(),ok=rows.filter(x=>x.ok).length;
     showModal('<h3>🩺 動作チェック</h3><div class="subtle">ボタン '+ok+'/'+rows.length+' は表示・有効・配線済みです。実クリックまでは自動実行しません。</div><div style="margin-top:10px">'+rows.map(x=>'<div class="test-row"><span>'+(x.ok?'✅':'⚠️')+' '+esc(x.label)+'</span><span class="test-detail">'+esc(x.detail)+'</span></div>').join('')+'</div><h4>API / データベース</h4><div>'+checks.map(x=>'<div class="test-row"><span>'+(x[1]?'✅':'⚠️')+' '+esc(x[0])+'</span><span class="test-detail">'+esc(String(x[2]))+'</span></div>').join('')+'</div><div class="actions"><button class="btn" id="featureDiagReload">再チェック</button><button class="btn primary" id="featureDiagRebuild">AI DB再構築</button><button class="btn" data-close>閉じる</button></div>');
@@ -11787,8 +11841,11 @@ boot();
   // Canonical event wiring: direct onclick assignments are idempotent.
   function bindStatic(){
     const handlers={
-      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),
-      copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),nameBtn:()=>openName(),profileBtn:()=>openProfileSettings(),inviteBtn:()=>openInvite(),directConnectBtn:()=>directConnectStable($id('directPeerId')?.value)
+      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),notificationBtn:()=>requestNotifications(),
+      copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),nameBtn:()=>openName(),profileBtn:()=>openProfileSettings(),inviteBtn:()=>openInvite(),directConnectBtn:()=>directConnectStable($id('directPeerId')?.value),
+      passphraseSaveStable:()=>{const input=$id('passphraseInputStable');const value=String(input?.value||'');if(!value){toast('パスフレーズを入力してください');return;}localSet(APP.keys.password,value);if(input)input.value='';const st=$id('passphraseStateStable');if(st)st.textContent='設定済み（入力内容は表示しません）';addLog('INFO','passphrase updated');toast('共有パスフレーズを保存しました')},
+      send:()=>sendText(),emojiBtn:()=>openEmojiPicker(),attachBtn:()=>{if(!featureOn('files')){toast('ファイル送信をONにしてください');return;}const f=$id('fileInput');if(!f)return;f.dataset.mode='files';f.accept='';f.multiple=true;f.click()},
+      cancelReply:()=>{state.replyTo=null;state.editingId=null;renderComposerState()},micBtn:()=>toggleMic(),camBtn:()=>toggleCam(),wakeBtn:()=>ensureWakeLock(),hangBtn:()=>hangup()
     };
     for(const [id,fn] of Object.entries(handlers)){
       const e=$id(id); if(!e)continue;
@@ -11818,6 +11875,7 @@ boot();
       e.dataset.scBound='1';
     }
     syncPeerIdUI();
+    window.__secureChatStaticBound=true;
   }
 
 
@@ -11863,7 +11921,12 @@ boot();
   });
   settingsObserver.observe(document.body,{childList:true,subtree:true});
   setTimeout(()=>{try{rebuildAIKnowledgeStable().then(n=>addLog('INFO','AI DB rebuilt',String(n))).catch(e=>addLog('WARN','AI DB rebuild',e?.message||String(e)))}catch{}},1000);
-  setTimeout(()=>{const el=$id('topStatus');if(el&&!state.wsReady&&/初期化中|接続確認中|接続中/.test(el.textContent||''))el.textContent='オフライン（シグナリング未接続）'},1500);
+  // Never equate missing signaling with being offline. Keep browser network
+  // status and signaling status separate.
+  window.addEventListener('online',refreshNetworkStatus,{passive:true});
+  window.addEventListener('offline',refreshNetworkStatus,{passive:true});
+  setTimeout(refreshNetworkStatus,100);
+  setInterval(refreshNetworkStatus,1500);
   setTimeout(()=>{try{ensurePeerIdentity();renderDynamicUI()}catch{};bindStatic();syncPeerIdUI()},1200);
   setInterval(syncPeerIdUI,1000);
 })();
