@@ -366,6 +366,8 @@ button{cursor:pointer}
 .composer-wrap{
   flex:0 0 auto;
   padding-bottom:env(safe-area-inset-bottom);
+  position:relative;
+  z-index:4;
 }
 .composer{
   display:flex;
@@ -374,6 +376,19 @@ button{cursor:pointer}
   padding:10px;
   background:var(--surface2);
   border-top:1px solid var(--line);
+  position:relative;
+  z-index:2;
+}
+.composer > .btn{
+  position:relative;
+  z-index:3;
+  pointer-events:auto;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  min-width:44px;
+  min-height:44px;
+  -webkit-user-select:none;
+  user-select:none;
 }
 .composer textarea{
   flex:1;
@@ -887,7 +902,7 @@ html,body{min-height:100%;}
           placeholder="メッセージ… Ctrl+Enterで送信"
         ></textarea>
 
-        <button class="btn primary" id="send">
+        <button class="btn primary" id="send" type="button" aria-label="メッセージを送信">
           ➤
         </button>
       </div>
@@ -1362,7 +1377,9 @@ const state={
 
     aiAllowControl:false,
 
-  
+    pushServerEndpoint:'',
+    pushVapidPublicKey:'',
+
     features:{...DEFAULT_FEATURES}
   }
 };
@@ -1415,6 +1432,7 @@ class Database{
             'peerState',
             'auditEvents',
             'drafts',
+            'pushSubscriptions',
             'meta'
           ];
 
@@ -2265,6 +2283,12 @@ function connectSignal(){
       state.wsReady=true;
       state.activeEndpoint={scheme:state.peerServer.scheme,host:state.peerServer.host,port};
       setTopStatus(`オンライン · ${port}`);
+      // When a push subscription exists, let a compatible central server associate it with this Peer ID.
+      getCurrentPushSubscription?.().then(sub=>{
+        if(sub && state.ws===ws && state.wsReady){
+          try{signalSend({type:'push-register',peerId:state.id,name:state.name,subscription:sub.toJSON()});}catch(e){addLog('WARN','push-register signal',e?.message||String(e));}
+        }
+      }).catch(e=>addLog('WARN','push-register lookup',e?.message||String(e)));
       addLog('INFO','WebSocket open',`${state.peerServer.scheme}://${state.peerServer.host}:${port}`);
       monitorSecurity();
       try{ if(typeof reconnectKnownPeers==='function') reconnectKnownPeers(); }catch(e){ addLog('WARN','reconnectKnownPeers',e?.message||String(e)); }
@@ -3779,45 +3803,76 @@ function playNotificationSound(){
   }catch{}
 }
 
-function browserNotify(
+async function browserNotify(
   title,
-  body
+  body,
+  data={}
 ){
   if(
     !featureOn('browserNotify')
   ){
-    return;
+    return false;
   }
 
   if(
     !('Notification' in window)
   ){
-    return;
+    addLog('WARN','browser notification','Notification API unavailable');
+    return false;
   }
 
   if(
     Notification.permission!=='granted'
   ){
-    return;
+    return false;
   }
 
   try{
-    new Notification(
-      title,
-      {
-        body,
-        tag:'secure-chat'
-      }
-    );
-  }catch{}
+    const reg=await getNotificationSWRegistration();
+    if(reg){
+      await reg.showNotification(
+        String(title||'Secure Chat'),
+        {
+          body:String(body||''),
+          tag:'secure-chat',
+          renotify:true,
+          data:{
+            ...data,
+            url:location.href
+          }
+        }
+      );
+      return true;
+    }
+  }catch(e){
+    addLog('WARN','persistent notification',e?.message||String(e));
+  }
+
+  // Desktop-only fallback while the page is still open.
+  try{
+    if(!isTouchOnlyDevice()){
+      new Notification(
+        String(title||'Secure Chat'),
+        {
+          body:String(body||''),
+          tag:'secure-chat'
+        }
+      );
+      return true;
+    }
+  }catch(e){
+    addLog('WARN','notification fallback',e?.message||String(e));
+  }
+
+  return false;
 }
 
-function notifyIncoming(
+async function notifyIncoming(
   message
 ){
   playNotificationSound();
 
-  browserNotify(
+  await browserNotify(
     contactName(
       message.from
     ),
@@ -3827,11 +3882,16 @@ function notifyIncoming(
     ).slice(
       0,
       160
-    )
+    ),
+    {
+      type:'message',
+      peerId:String(message.from||''),
+      messageId:String(message.id||'')
+    }
   );
 }
 
-function processRemoteMentions(
+async function processRemoteMentions(
   remote,
   text
 ){
@@ -3850,9 +3910,10 @@ function processRemoteMentions(
 
   playNotificationSound();
 
-  browserNotify(
+  await browserNotify(
     'Secure Chat メンション',
-    `${contactName(remote)} があなたをメンションしました`
+    `${contactName(remote)} があなたをメンションしました`,
+    {type:'mention',peerId:String(remote||'')}
   );
 
   toast(
@@ -7199,6 +7260,29 @@ function openSettings(
     </div>
 
 
+    <h4>🔔 通知</h4>
+    <div class="card">
+      <b>ブラウザ通知</b>
+      <div id="notificationStatusSettings" class="subtle" style="margin-top:6px">確認中…</div>
+      <div class="actions" style="justify-content:flex-start;margin-top:10px">
+        <button class="btn primary" id="enableNotificationsSettings">🔔 通知を有効化</button>
+        <button class="btn" id="testNotificationSettings">テスト通知</button>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Web Push VAPID公開鍵（サーバー側の公開鍵）</label>
+        <input id="pushVapidPublicKey" type="text" autocomplete="off" placeholder="設定するとWeb Push購読を作成できます">
+      </div>
+      <div class="field">
+        <label>Push購読登録API（任意）</label>
+        <input id="pushServerEndpoint" type="url" autocomplete="off" placeholder="https://example.com/api/push/subscribe">
+      </div>
+      <small>
+        ページを閉じた後も新着通知を受け取るには、HTTPS + Service Worker + Web Pushのサーバー送信が必要です。
+        Push購読登録APIを設定すると購読情報をサーバーへ登録できます。
+      </small>
+    </div>
+
+
     <div class="card" style="margin-top:14px">
       <b>🛠️ メンテナンス / 診断</b>
       <small>チャット画面をすっきりさせるため、診断・ログ・バックアップなどの管理機能はここにまとめています。</small>
@@ -7242,6 +7326,12 @@ function openSettings(
 
   $('setFallback').checked=
     state.peerServer.fallbackEnabled;
+
+  refreshNotificationSettingsUI();
+  $('enableNotificationsSettings').onclick=()=>enableNotifications();
+  $('testNotificationSettings').onclick=()=>sendTestNotification();
+  $('pushVapidPublicKey').value=state.settings.pushVapidPublicKey||'';
+  $('pushServerEndpoint').value=state.settings.pushServerEndpoint||'';
 
   $('setFileChunk').value=
     state.settings.fileChunkSize;
@@ -7412,6 +7502,12 @@ function openSettings(
 
       state.settings.aiAllowControl=
         $('aiAllowControl').checked;
+
+      state.settings.pushVapidPublicKey=
+        $('pushVapidPublicKey').value.trim();
+
+      state.settings.pushServerEndpoint=
+        $('pushServerEndpoint').value.trim();
 
 
       saveSettings();
@@ -11338,6 +11434,207 @@ async function requestNotifications(){
 }
 
 /* =========================================================
+   Persistent Web Push / Service Worker notifications
+   ========================================================= */
+
+const PUSH_CLIENT={
+  swUrl:'secure-chat-sw.js',
+  registration:null,
+  registering:null
+};
+
+function isTouchOnlyDevice(){
+  return !!(
+    ('ontouchstart' in window || navigator.maxTouchPoints>0) &&
+    !window.matchMedia?.('(pointer:fine)').matches
+  );
+}
+
+function urlBase64ToUint8Array(value){
+  const normalized=String(value||'')
+    .replace(/-/g,'+')
+    .replace(/_/g,'/');
+  const pad='='.repeat((4-normalized.length%4)%4);
+  const raw=atob(normalized+pad);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+
+async function registerNotificationServiceWorker(){
+  if(!('serviceWorker' in navigator)){
+    return null;
+  }
+  if(!window.isSecureContext){
+    addLog('WARN','notification service worker','HTTPS/secure context required');
+    return null;
+  }
+  if(PUSH_CLIENT.registration?.active){
+    return PUSH_CLIENT.registration;
+  }
+  if(PUSH_CLIENT.registering){
+    return PUSH_CLIENT.registering;
+  }
+
+  PUSH_CLIENT.registering=(async()=>{
+    try{
+      const url=new URL(PUSH_CLIENT.swUrl,document.baseURI);
+      const reg=await navigator.serviceWorker.register(url.href,{scope:'./'});
+      await navigator.serviceWorker.ready;
+      PUSH_CLIENT.registration=reg;
+      addLog('INFO','notification service worker','registered');
+      return reg;
+    }catch(e){
+      addLog('ERROR','notification service worker',e?.message||String(e));
+      return null;
+    }finally{
+      PUSH_CLIENT.registering=null;
+    }
+  })();
+  return PUSH_CLIENT.registering;
+}
+
+async function getNotificationSWRegistration(){
+  if(PUSH_CLIENT.registration?.active)return PUSH_CLIENT.registration;
+  return registerNotificationServiceWorker();
+}
+
+async function getCurrentPushSubscription(){
+  try{
+    const reg=await getNotificationSWRegistration();
+    if(!reg?.pushManager)return null;
+    return await reg.pushManager.getSubscription();
+  }catch(e){
+    addLog('WARN','push subscription lookup',e?.message||String(e));
+    return null;
+  }
+}
+
+async function savePushSubscription(subscription){
+  if(!subscription)return false;
+  const json=subscription.toJSON();
+  const row={
+    id:state.id,
+    peerId:state.id,
+    subscription:json,
+    updatedAt:Date.now()
+  };
+  try{
+    if(state.storageReady)await db.put('pushSubscriptions',row);
+  }catch(e){
+    addLog('WARN','push subscription local save',e?.message||String(e));
+  }
+
+  const endpoint=String(state.settings.pushServerEndpoint||'').trim();
+  if(endpoint){
+    try{
+      const res=await fetch(endpoint,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          peerId:state.id,
+          name:state.name,
+          subscription:json
+        })
+      });
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      addLog('INFO','push subscription registered','server accepted subscription');
+    }catch(e){
+      addLog('WARN','push subscription server sync',e?.message||String(e));
+      toast('通知購読は保存しましたが、通知サーバーへの登録に失敗しました');
+    }
+  }
+  return true;
+}
+
+async function enableNotifications(){
+  if(!('Notification' in window)){
+    toast('このブラウザでは通知APIを利用できません');
+    return false;
+  }
+  try{
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted'){
+      refreshNotificationSettingsUI();
+      toast('通知が許可されませんでした');
+      return false;
+    }
+
+    const reg=await registerNotificationServiceWorker();
+    let subscription=null;
+    const vapid=String(state.settings.pushVapidPublicKey||'').trim();
+    if(reg?.pushManager && vapid){
+      subscription=await reg.pushManager.getSubscription();
+      if(!subscription){
+        subscription=await reg.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:urlBase64ToUint8Array(vapid)
+        });
+      }
+      await savePushSubscription(subscription);
+    }
+
+    refreshNotificationSettingsUI();
+    await sendTestNotification();
+    if(!vapid){
+      toast('通知は有効です。サイトを閉じた後の通知にはPushサーバー設定が必要です');
+    }else{
+      toast('🔔 通知を有効化しました');
+    }
+    return true;
+  }catch(e){
+    addLog('ERROR','enable notifications',e?.message||String(e));
+    toast('通知設定に失敗しました: '+(e?.message||String(e)));
+    refreshNotificationSettingsUI();
+    return false;
+  }
+}
+
+async function sendTestNotification(){
+  if(!('Notification' in window) || Notification.permission!=='granted'){
+    toast('先に「通知を有効化」を押してください');
+    return false;
+  }
+  const ok=await browserNotify(
+    'Secure Chat',
+    '🔔 通知テストに成功しました',
+    {type:'test',peerId:state.id}
+  );
+  if(!ok)toast('通知を表示できませんでした');
+  return ok;
+}
+
+async function refreshNotificationSettingsUI(){
+  const el=$('notificationStatusSettings');
+  if(!el)return;
+  if(!('Notification' in window)){
+    el.textContent='このブラウザはNotification APIに対応していません';
+    return;
+  }
+  const permission=Notification.permission;
+  let sw='未登録';
+  let push='未購読';
+  try{
+    const reg=await getNotificationSWRegistration();
+    sw=reg?.active?'登録済み':'未登録';
+    const sub=reg?.pushManager?await reg.pushManager.getSubscription():null;
+    push=sub?'購読済み':'未購読';
+  }catch(e){
+    sw='確認失敗';
+    addLog('WARN','notification status',e?.message||String(e));
+  }
+  el.textContent=`権限: ${permission} / Service Worker: ${sw} / Push: ${push}`;
+}
+
+async function requestNotifications(){
+  // Do not request permission during boot; browsers increasingly require a user gesture.
+  try{
+    await registerNotificationServiceWorker();
+    refreshNotificationSettingsUI();
+  }catch(e){
+    addLog('WARN','notification prepare',e?.message||String(e));
+  }
+}
+
+/* =========================================================
    Error hooks
    ========================================================= */
 
@@ -11566,7 +11863,10 @@ window.SecureChat={
   openBackup,
   openSearch,
   getAIStatus,
-  getPythonSource
+  getPythonSource,
+  enableNotifications,
+  sendTestNotification,
+  registerNotificationServiceWorker
 };
 
 /* =========================================================
@@ -11841,10 +12141,37 @@ boot();
   };
   state.profileStatus=state.profileStatus||'';state.profileAvatar=state.profileAvatar||avatarText(state.name);
 
+  // Robust send-button binding for mouse + touch/iPad Safari.
+  // It is installed exactly once and de-duplicates the click synthesized after pointerup.
+  function wireSendButton(){
+    const e=$id('send');
+    if(!e || e.dataset.scSendBound==='1') return;
+    e.onclick=null;
+    let lastActivation=0;
+    const run=()=>{
+      const t=Date.now();
+      if(t-lastActivation<450) return;
+      lastActivation=t;
+      safe(()=>sendText(),'送信');
+    };
+    e.addEventListener('pointerup',ev=>{
+      if(ev.pointerType==='touch' || ev.pointerType==='pen'){
+        ev.preventDefault();
+        run();
+      }
+    },{passive:false});
+    e.addEventListener('click',ev=>{
+      ev.preventDefault();
+      run();
+    },{passive:false});
+    e.dataset.scSendBound='1';
+    e.setAttribute('aria-disabled','false');
+  }
+
   // Canonical event wiring: direct onclick assignments are idempotent.
   function bindStatic(){
     const handlers={
-      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),notificationBtn:()=>requestNotifications(),
+      settingsBtn:()=>openSettings(),aiBtn:()=>openAI(),openAiQuick:()=>openAI(),searchBtn:()=>openSearch(),groupBtn:()=>openGroup(),friendBtn:()=>openFriend(),callBtn:()=>state.selected?startCall(state.selected):toast('相手を選択してください'),notificationBtn:()=>enableNotifications(),
       copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),nameBtn:()=>openName(),profileBtn:()=>openProfileSettings(),inviteBtn:()=>openInvite(),directConnectBtn:()=>directConnectStable($id('directPeerId')?.value),
       passphraseSaveStable:()=>{const input=$id('passphraseInputStable');const value=String(input?.value||'');if(!value){toast('パスフレーズを入力してください');return;}localSet(APP.keys.password,value);if(input)input.value='';const st=$id('passphraseStateStable');if(st)st.textContent='設定済み（入力内容は表示しません）';addLog('INFO','passphrase updated');toast('共有パスフレーズを保存しました')},
       send:()=>sendText(),emojiBtn:()=>openEmojiPicker(),attachBtn:()=>{if(!featureOn('files')){toast('ファイル送信をONにしてください');return;}const f=$id('fileInput');if(!f)return;f.dataset.mode='files';f.accept='';f.multiple=true;f.click()},
@@ -11852,9 +12179,13 @@ boot();
     };
     for(const [id,fn] of Object.entries(handlers)){
       const e=$id(id); if(!e)continue;
+      if(id==='send') continue;
       e.onclick=ev=>{ev.preventDefault();safe(fn,id)};
       e.dataset.scBound='1';
     }
+    wireSendButton();
+    const sendBtn=$id('send');
+    if(sendBtn) sendBtn.dataset.scBound='1';
     document.querySelectorAll('.tabs button[data-tab]').forEach(btn=>{
       btn.onclick=ev=>{
         ev.preventDefault();
@@ -11930,8 +12261,8 @@ boot();
   window.addEventListener('offline',refreshNetworkStatus,{passive:true});
   setTimeout(refreshNetworkStatus,100);
   setInterval(refreshNetworkStatus,1500);
-  setTimeout(()=>{try{ensurePeerIdentity();renderDynamicUI()}catch{};bindStatic();syncPeerIdUI()},1200);
-  setInterval(syncPeerIdUI,1000);
+  setTimeout(()=>{try{ensurePeerIdentity();renderDynamicUI()}catch{};bindStatic();wireSendButton();syncPeerIdUI()},1200);
+  setInterval(()=>{wireSendButton();syncPeerIdUI()},1000);
 
   // Desktop-only laughing pointer companion. Show on real mouse/trackpad devices,
   // but hide on iPad/iPhone/iPod even when iPadOS reports a desktop-like platform.
@@ -12127,5 +12458,569 @@ def summarize_messages(messages):
   setTimeout(()=>{try{ensureGroupFS()}catch{}},0);
 })();
 </script>
+
+<script>
+/* =========================================================
+   Secure Chat add-on: connection guard + 1-to-1 direct trade
+   Paste-safe, self-contained integration layer.
+   ========================================================= */
+(function(){
+  'use strict';
+
+  const ST = window.SecureChat && window.SecureChat.state;
+  if(!ST){
+    console.error('[SecureChat] trade layer: state unavailable');
+    return;
+  }
+
+  const key = 'securechat.trades.v1';
+  const $ = (id)=>document.getElementById(id);
+  const safeText = (v)=>String(v ?? '').trim();
+  const escT = (v)=>typeof esc==='function' ? esc(String(v ?? '')) : String(v ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const toastT = (m)=>{ try{ if(typeof toast==='function') toast(m); }catch{} };
+  const logT = (level,event,details='')=>{ try{ if(typeof addLog==='function') addLog(level,event,details); }catch{} };
+  const nowT = ()=>{ try{ return typeof now==='function' ? now() : Date.now(); }catch{ return Date.now(); } };
+  const uidT = (p='trade')=>{ try{ return typeof uid==='function' ? uid(p) : p+'_'+Math.random().toString(36).slice(2)+Date.now().toString(36); }catch{ return p+'_'+Date.now(); } };
+
+  function live(peer){
+    try{ return typeof isLiveDataPeer==='function' && isLiveDataPeer(peer); }
+    catch{ return false; }
+  }
+
+  function connectedGuard(peer,feature){
+    const id=safeText(peer);
+    if(!id){ toastT('相手を選択してください'); return false; }
+    if(!live(id)){
+      toastT(`⚠️ ${feature}を利用するには、先にこの相手とP2P接続してください`);
+      logT('WARN','connection guard',`${feature}: ${id} is not connected`);
+      return false;
+    }
+    return true;
+  }
+
+  function saveTrades(){
+    try{ localStorage.setItem(key, JSON.stringify(ST.trades || [])); }
+    catch(e){ logT('WARN','trade storage save',e?.message||String(e)); }
+  }
+
+  function loadTrades(){
+    try{
+      const raw=localStorage.getItem(key);
+      const parsed=raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    }catch(e){
+      logT('WARN','trade storage load',e?.message||String(e));
+      return [];
+    }
+  }
+
+  if(!Array.isArray(ST.trades)) ST.trades=loadTrades();
+
+  function displayPeerName(peer){
+    try{
+      const c=typeof contactName==='function' ? contactName(peer) : '';
+      if(c && c!==peer) return c;
+    }catch{}
+    return 'ユーザー';
+  }
+
+  function getTrade(id){
+    return (ST.trades||[]).find(t=>t.id===id) || null;
+  }
+
+  function statusLabel(status){
+    return ({
+      proposed:'提案中',
+      accepted:'承認済み・最終確定待ち',
+      rejected:'拒否',
+      completed:'交換確定',
+      cancelled:'キャンセル'
+    })[status] || status;
+  }
+
+  function renderTradeRows(){
+    const box=$('sctTradeList');
+    if(!box)return;
+    const rows=[...(ST.trades||[])].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+    if(!rows.length){
+      box.innerHTML='<div class="empty">取引はまだありません。</div>';
+      return;
+    }
+    box.innerHTML=rows.map(t=>{
+      const other=t.proposer===ST.id?t.responder:t.proposer;
+      const canRespond=t.responder===ST.id && t.status==='proposed';
+      const canConfirm=(t.proposer===ST.id||t.responder===ST.id) && t.status==='accepted' && !(t.confirmed?.[ST.id]);
+      const mineConfirm=!!(t.confirmed?.[ST.id]);
+      const both=t.confirmed?.[t.proposer] && t.confirmed?.[t.responder];
+      return `<div class="sct-trade-row">
+        <div class="sct-trade-main">
+          <strong>🤝 ${escT(displayPeerName(other))}</strong>
+          <span class="sct-trade-status">${escT(statusLabel(both?'completed':t.status))}</span>
+          <div class="subtle">出す: ${escT(t.proposer===ST.id?t.offer:t.request)}</div>
+          <div class="subtle">受け取る: ${escT(t.proposer===ST.id?t.request:t.offer)}</div>
+        </div>
+        <div class="actions">
+          ${canRespond?`<button class="btn primary" data-sct-accept="${escT(t.id)}">承認</button><button class="btn danger" data-sct-reject="${escT(t.id)}">拒否</button>`:''}
+          ${canConfirm?`<button class="btn primary" data-sct-confirm="${escT(t.id)}">${mineConfirm?'確定済み':'最終確定'}</button>`:''}
+          ${t.status==='proposed'||t.status==='accepted'?`<button class="btn" data-sct-cancel="${escT(t.id)}">キャンセル</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    box.querySelectorAll('[data-sct-accept]').forEach(b=>b.onclick=()=>tradeRespond(b.dataset.sctAccept,true));
+    box.querySelectorAll('[data-sct-reject]').forEach(b=>b.onclick=()=>tradeRespond(b.dataset.sctReject,false));
+    box.querySelectorAll('[data-sct-confirm]').forEach(b=>b.onclick=()=>tradeConfirm(b.dataset.sctConfirm));
+    box.querySelectorAll('[data-sct-cancel]').forEach(b=>b.onclick=()=>tradeCancel(b.dataset.sctCancel));
+  }
+
+  function openTrade(){
+    const peer=safeText(ST.selected);
+    if(!connectedGuard(peer,'取引')) return;
+    if(typeof showModal!=='function'){ toastT('取引画面を開けません'); return; }
+    showModal(`<h3>🤝 1対1ダイレクト交換</h3>
+      <p class="help">${escT(displayPeerName(peer))} と交換内容を合意してから提案してください。</p>
+      <div class="field"><label>自分が出すもの</label><input id="sctOffer" maxlength="240" placeholder="例：○○カード1枚"></div>
+      <div class="field"><label>相手から受け取るもの</label><input id="sctRequest" maxlength="240" placeholder="例：△△カード1枚"></div>
+      <div class="field"><label>メモ（任意）</label><textarea id="sctNote" maxlength="500" placeholder="交換条件など"></textarea></div>
+      <div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="sctPropose">交換を提案</button></div>
+      <hr>
+      <h4>取引履歴</h4><div id="sctTradeList" class="logbox"></div>`);
+    renderTradeRows();
+    $('sctPropose').onclick=async()=>{
+      const offer=safeText($('sctOffer')?.value);
+      const request=safeText($('sctRequest')?.value);
+      const note=safeText($('sctNote')?.value);
+      if(!offer || !request){ toastT('出すものと受け取るものを入力してください'); return; }
+      if(!connectedGuard(peer,'取引')) return;
+      const id=uidT('trade');
+      const trade={id,proposer:ST.id,responder:peer,offer,request,note,status:'proposed',confirmed:{},createdAt:nowT(),updatedAt:nowT()};
+      ST.trades.push(trade); saveTrades();
+      try{
+        if(typeof sendControlObject!=='function') throw new Error('P2P送信機能が利用できません');
+        await sendControlObject(peer,{type:'trade-proposal',trade});
+        toastT('🤝 交換提案を送信しました');
+        renderTradeRows();
+      }catch(e){
+        ST.trades=ST.trades.filter(t=>t.id!==id); saveTrades();
+        toastT('取引提案の送信に失敗しました: '+(e?.message||String(e)));
+        logT('ERROR','trade proposal',e?.message||String(e));
+      }
+    };
+  }
+
+  async function sendTrade(peer,obj){
+    if(!connectedGuard(peer,'取引')) return false;
+    if(typeof sendControlObject!=='function'){ toastT('P2P送信機能が利用できません'); return false; }
+    await sendControlObject(peer,obj);
+    return true;
+  }
+
+  async function tradeRespond(id,accepted){
+    const t=getTrade(id); if(!t)return;
+    if(t.responder!==ST.id || t.status!=='proposed')return;
+    t.status=accepted?'accepted':'rejected'; t.updatedAt=nowT(); saveTrades();
+    try{
+      await sendTrade(t.proposer,{type:'trade-response',tradeId:t.id,accepted:!!accepted,updatedAt:t.updatedAt});
+      toastT(accepted?'✅ 取引を承認しました。双方の最終確定を待っています':'取引を拒否しました');
+    }catch(e){
+      t.status='proposed'; t.updatedAt=nowT(); saveTrades();
+      toastT('応答の送信に失敗しました: '+(e?.message||String(e))); logT('ERROR','trade response',e?.message||String(e));
+    }
+    renderTradeRows();
+  }
+
+  async function tradeConfirm(id){
+    const t=getTrade(id); if(!t || t.status!=='accepted')return;
+    if(!live(t.proposer===ST.id?t.responder:t.proposer)){
+      connectedGuard(t.proposer===ST.id?t.responder:t.proposer,'取引'); return;
+    }
+    t.confirmed=t.confirmed||{}; t.confirmed[ST.id]=true; t.updatedAt=nowT();
+    const complete=!!(t.confirmed[t.proposer] && t.confirmed[t.responder]);
+    if(complete) t.status='completed';
+    saveTrades();
+    try{
+      await sendTrade(t.proposer===ST.id?t.responder:t.proposer,{type:'trade-confirm',tradeId:t.id,confirmedBy:ST.id,completed:t.status==='completed',updatedAt:t.updatedAt});
+      toastT(complete?'🎉 交換が確定しました':'✅ 最終確定を送信しました');
+    }catch(e){
+      t.confirmed[ST.id]=false; if(!complete)t.status='accepted'; t.updatedAt=nowT(); saveTrades();
+      toastT('最終確定の送信に失敗しました: '+(e?.message||String(e))); logT('ERROR','trade confirm',e?.message||String(e));
+    }
+    renderTradeRows();
+  }
+
+  async function tradeCancel(id){
+    const t=getTrade(id); if(!t)return;
+    if(t.proposer!==ST.id && t.responder!==ST.id)return;
+    t.status='cancelled'; t.updatedAt=nowT(); saveTrades();
+    const other=t.proposer===ST.id?t.responder:t.proposer;
+    try{ await sendTrade(other,{type:'trade-cancel',tradeId:t.id,updatedAt:t.updatedAt}); }catch(e){ logT('WARN','trade cancel',e?.message||String(e)); }
+    toastT('取引をキャンセルしました'); renderTradeRows();
+  }
+
+  function handleTradePacket(remote,obj){
+    if(!obj?.type || !obj.type.startsWith('trade-')) return false;
+
+    try{
+      if(obj.type==='trade-proposal'){
+        const t=obj.trade;
+        if(!t || t.responder!==ST.id || t.proposer!==remote || !t.offer || !t.request)return true;
+        if(!live(remote)){
+          toastT('⚠️ 取引提案を受け取りましたが、相手とのP2P接続が切断されています');
+          return true;
+        }
+        const existing=getTrade(t.id);
+        if(existing) return true;
+        t.confirmed={}; t.status='proposed'; t.updatedAt=nowT();
+        ST.trades.push(t); saveTrades();
+        toastT(`🤝 ${displayPeerName(remote)} から交換提案があります`);
+        if(typeof openTrade==='function' && ST.selected===remote) setTimeout(()=>{try{openTrade()}catch{}},0);
+        return true;
+      }
+
+      const t=getTrade(obj.tradeId);
+      if(!t || (t.proposer!==remote && t.responder!==remote)) return true;
+
+      if(obj.type==='trade-response'){
+        if(t.proposer!==ST.id || remote!==t.responder || t.status!=='proposed') return true;
+        t.status=obj.accepted?'accepted':'rejected'; t.updatedAt=nowT(); saveTrades();
+        toastT(obj.accepted?'✅ 交換提案が承認されました。最終確定してください':'交換提案が拒否されました');
+        return true;
+      }
+
+      if(obj.type==='trade-confirm'){
+        if(t.status!=='accepted') return true;
+        t.confirmed=t.confirmed||{};
+        t.confirmed[remote]=true;
+        if(obj.confirmedBy===ST.id) t.confirmed[ST.id]=true;
+        if(t.confirmed[t.proposer] && t.confirmed[t.responder]) t.status='completed';
+        t.updatedAt=nowT(); saveTrades();
+        toastT(t.status==='completed'?'🎉 交換が確定しました':'相手が最終確定しました');
+        return true;
+      }
+
+      if(obj.type==='trade-cancel'){
+        t.status='cancelled'; t.updatedAt=nowT(); saveTrades(); toastT('取引が相手によってキャンセルされました'); return true;
+      }
+    }catch(e){
+      logT('ERROR','trade receive',e?.message||String(e));
+      toastT('取引データの処理に失敗しました');
+    }
+    return true;
+  }
+
+  /* Inject a single Trade button without taking over existing buttons. */
+  function ensureTradeButton(){
+    if($('tradeBtn')){
+      $('tradeBtn').dataset.scTradeBound='1';
+      $('tradeBtn').onclick=()=>openTrade();
+      return;
+    }
+    const top=document.querySelector('.top-actions');
+    if(!top)return;
+    const b=document.createElement('button');
+    b.className='iconbtn'; b.id='tradeBtn'; b.type='button'; b.title='1対1取引'; b.textContent='🤝'; b.dataset.scTradeBound='1';
+    b.onclick=(ev)=>{ev.preventDefault();openTrade();};
+    top.appendChild(b);
+  }
+
+  /* Guard features which otherwise auto-create a P2P connection. */
+  function installGuards(){
+    try{
+      if(typeof sendFiles==='function' && !sendFiles.__sctGuard){
+        const original=sendFiles;
+        const wrapped=async function(files){
+          const peer=safeText(ST.selected);
+          if(!connectedGuard(peer,'ファイル送信')) return;
+          return original(files);
+        };
+        wrapped.__sctGuard=true;
+        try{sendFiles=wrapped}catch{}
+        try{window.sendFiles=wrapped}catch{}
+      }
+    }catch(e){ logT('WARN','install sendFiles guard',e?.message||String(e)); }
+
+    try{
+      if(typeof reactMessage==='function' && !reactMessage.__sctGuard){
+        const original=reactMessage;
+        const wrapped=async function(messageId,emoji){
+          const msg=(ST.chats||[]).find(m=>m.id===messageId);
+          const peer=safeText(msg?.peer);
+          if(!connectedGuard(peer,'リアクション')) return;
+          return original(messageId,emoji);
+        };
+        wrapped.__sctGuard=true;
+        try{reactMessage=wrapped}catch{}
+        try{window.reactMessage=wrapped}catch{}
+      }
+    }catch(e){ logT('WARN','install react guard',e?.message||String(e)); }
+
+    try{
+      if(typeof startCall==='function' && !startCall.__sctGuard){
+        const original=startCall;
+        const wrapped=async function(remote){
+          if(!connectedGuard(remote,'通話')) return;
+          return original(remote);
+        };
+        wrapped.__sctGuard=true;
+        try{startCall=wrapped}catch{}
+        try{window.startCall=wrapped}catch{}
+      }
+    }catch(e){ logT('WARN','install call guard',e?.message||String(e)); }
+  }
+
+  function installReceiver(){
+    const current=window.receivePacket;
+    if(typeof current!=='function' || current.__sctTrade)return false;
+    const wrapped=async function(remote,obj){
+      if(handleTradePacket(remote,obj)) return;
+      return current(remote,obj);
+    };
+    wrapped.__sctTrade=true;
+    window.receivePacket=wrapped;
+    try{receivePacket=wrapped}catch{}
+    return true;
+  }
+
+  function bootTradeLayer(){
+    ensureTradeButton();
+    installGuards();
+    installReceiver();
+    window.SecureChatTrade={
+      state:ST,
+      open:openTrade,
+      respond:tradeRespond,
+      confirm:tradeConfirm,
+      cancel:tradeCancel,
+      connectedGuard
+    };
+    logT('INFO','trade layer','loaded');
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bootTradeLayer,{once:true});
+  else bootTradeLayer();
+  setTimeout(bootTradeLayer,1000);
+  setTimeout(bootTradeLayer,3000);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   Secure Chat - connection notification / push bridge
+   ========================================================= */
+(function(){
+  'use strict';
+
+  if(window.__secureChatConnectionPushLayer){
+    return;
+  }
+  window.__secureChatConnectionPushLayer=true;
+
+  function getState(){
+    return window.SecureChat?.state || null;
+  }
+
+  function safePeerId(value){
+    return /^\d{6}$/.test(String(value||'').trim());
+  }
+
+  function log(level,event,details=''){
+    try{
+      if(typeof window.addLog==='function'){
+        window.addLog(level,event,details);
+      }
+    }catch{}
+  }
+
+  function showToast(message){
+    try{
+      if(typeof window.toast==='function'){
+        window.toast(message);
+        return;
+      }
+    }catch{}
+  }
+
+  function peerName(peer, fallback='ユーザー'){
+    try{
+      if(typeof window.contactName==='function'){
+        const n=window.contactName(peer);
+        if(n && n!==peer) return String(n);
+      }
+    }catch{}
+    return fallback;
+  }
+
+  function isConnected(peer){
+    try{
+      if(typeof window.isLiveDataPeer==='function'){
+        return !!window.isLiveDataPeer(peer);
+      }
+    }catch{}
+    return false;
+  }
+
+  const noticeCache=new Map();
+  function allowConnectionNotice(peer){
+    const t=Date.now();
+    const old=noticeCache.get(peer)||0;
+    if(t-old<6000) return false;
+    noticeCache.set(peer,t);
+    return true;
+  }
+
+  async function showConnectionNotice(remote,obj){
+    const st=getState();
+    if(!st) return;
+    const peer=String(remote||'').trim();
+    if(!safePeerId(peer) || !isConnected(peer)) return;
+    if(!allowConnectionNotice(peer)) return;
+
+    const name=peerName(peer,String(obj?.name||'ユーザー'));
+
+    try{
+      if(document.visibilityState==='visible'){
+        window.alert(`📡 ${name} と接続されました\n\nこの相手とチャットできます。`);
+      }else if(typeof window.browserNotify==='function'){
+        await window.browserNotify(
+          `${name} と接続されました`,
+          'Secure Chatでチャットできます。',
+          {
+            type:'peer-connected',
+            peerId:peer,
+            name:name,
+            url:location.href
+          }
+        );
+      }
+    }catch(error){
+      log('WARN','connection notification',error?.message||String(error));
+    }
+
+    showToast(`📡 ${name} と接続されました`);
+    log('INFO','peer connected',`${peer} (${name})`);
+
+    try{
+      if(!st.selected && typeof window.selectPeer==='function'){
+        window.selectPeer(peer);
+      }
+    }catch{}
+  }
+
+  function notifyServer(packet){
+    const st=getState();
+    if(!st) return false;
+    try{
+      if(typeof window.signalSend==='function' && st.ws?.readyState===WebSocket.OPEN){
+        return !!window.signalSend(packet);
+      }
+    }catch(error){
+      log('WARN','push signal',error?.message||String(error));
+    }
+    return false;
+  }
+
+  /*
+    receivePacketの結果にフックする。
+    元の処理を必ず先に通し、既存のチャット/フレンド機能を壊さない。
+  */
+  function installReceiveHook(){
+    const current=window.receivePacket;
+    if(typeof current!=='function' || current.__scConnectionPushWrapped){
+      return false;
+    }
+
+    const wrapped=async function(remote,obj){
+      const result=await current(remote,obj);
+      if(obj?.type==='hello'){
+        setTimeout(()=>{
+          showConnectionNotice(remote,obj);
+        },150);
+      }
+      return result;
+    };
+
+    wrapped.__scConnectionPushWrapped=true;
+    window.receivePacket=wrapped;
+    try{ receivePacket=wrapped; }catch{}
+    return true;
+  }
+
+  /*
+    sendControlObjectのチャット送信を監視する。
+    実接続確認は元のsendText/sendControlObjectにも存在するため、
+    ここでは接続状態を壊さず、通知要求だけを追加する。
+  */
+  function installSendHook(){
+    const current=window.sendControlObject;
+    if(typeof current!=='function' || current.__scConnectionPushWrapped){
+      return false;
+    }
+
+    const wrapped=async function(remote,obj){
+      if(obj?.type==='chat' && !isConnected(remote)){
+        showToast('⚠️ 接続されていない相手にはメッセージを送信できません');
+        log('WARN','chat blocked',`${remote}: not connected`);
+        return false;
+      }
+
+      const result=await current(remote,obj);
+
+      if(obj?.type==='chat'){
+        notifyServer({
+          type:'push-message',
+          to:String(remote||''),
+          from:String(getState()?.id||''),
+          name:String(getState()?.name||'ユーザー'),
+          preview:String(obj?.message?.text||'[添付]').slice(0,160),
+          messageId:String(obj?.message?.id||''),
+          timestamp:Date.now()
+        });
+      }
+
+      return result;
+    };
+
+    wrapped.__scConnectionPushWrapped=true;
+    window.sendControlObject=wrapped;
+    try{ sendControlObject=wrapped; }catch{}
+    return true;
+  }
+
+  /*
+    発信者が相手へ接続成功したことを通知する。
+    サーバー側がpush-peer-connectedを扱う構成の場合にPushを送れる。
+  */
+  function installConnectionNotifyAPI(){
+    window.secureChatNotifyPeerConnected=function(targetPeer,targetName=''){
+      const st=getState();
+      const to=String(targetPeer||'').trim();
+      if(!st || !safePeerId(to) || !isConnected(to)) return false;
+      return notifyServer({
+        type:'push-peer-connected',
+        to:to,
+        from:String(st.id||''),
+        name:String(targetName||st.name||'ユーザー'),
+        timestamp:Date.now()
+      });
+    };
+  }
+
+  function install(){
+    installReceiveHook();
+    installSendHook();
+    installConnectionNotifyAPI();
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',install,{once:true});
+  }else{
+    install();
+  }
+  setTimeout(install,1000);
+  setTimeout(install,3000);
+})();
+</script>
+
 </body>
 </html>
