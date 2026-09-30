@@ -1886,17 +1886,10 @@ function securityWarning(
     message
   );
 
-  try{
-    alert(
-      '⚠️ Secure Chat セキュリティ警告\n\n'+
-      message+
-      '\n\n'+
-      'これは傍受・盗聴を断定するものではありません。'
-    );
-  }catch{}
-
+  // Security warnings must not block the entire UI with a synchronous
+  // alert(). Show them through the non-blocking toast/log system instead.
   toast(
-    '⚠️ セキュリティ警告'
+    '⚠️ '+String(message).replace(/\n/g,' / ')
   );
 }
 
@@ -2518,6 +2511,19 @@ function createRTC(
 
       monitorSecurity(pc);
       renderList();
+
+      // Direct connections open the dedicated chat screen automatically.
+      if(kind==='data'){
+        setTimeout(()=>{
+          try{
+            if(typeof window.openDirectChatFullscreen==='function' && isLiveDataPeer(remote)){
+              window.openDirectChatFullscreen(remote);
+            }
+          }catch(error){
+            addLog('WARN','open direct chat',error?.message||String(error));
+          }
+        },120);
+      }
     }
 
     if(
@@ -2721,7 +2727,13 @@ async function sendControlObject(
   let c=
     findDataConnection(remote);
 
-  if(
+  // Communication features must never silently create a new connection.
+  // A chat message is allowed only after the DataChannel is actually open.
+  if(object?.type==='chat') {
+    if(!c || c.control?.readyState!=='open' || c.pc?.connectionState!=='connected') {
+      throw new Error('このPeerとはP2P接続されていません');
+    }
+  } else if(
     !c ||
     c.control?.readyState!=='open'
   ){
@@ -11545,6 +11557,25 @@ async function savePushSubscription(subscription){
   return true;
 }
 
+async function getVapidPublicKeyFromServer(){
+  const response=await fetch('/api/vapid-public-key',{
+    method:'GET',
+    cache:'no-store',
+    headers:{'Accept':'application/json'}
+  });
+  if(!response.ok){
+    throw new Error(`VAPID公開鍵取得失敗: HTTP ${response.status}`);
+  }
+  const data=await response.json();
+  const publicKey=String(data?.publicKey||'').trim();
+  if(!publicKey){
+    throw new Error('サーバーからVAPID公開鍵が返されませんでした');
+  }
+  return publicKey;
+}
+
+window.getVapidPublicKeyFromServer=getVapidPublicKeyFromServer;
+
 async function enableNotifications(){
   if(!('Notification' in window)){
     toast('このブラウザでは通知APIを利用できません');
@@ -11560,7 +11591,16 @@ async function enableNotifications(){
 
     const reg=await registerNotificationServiceWorker();
     let subscription=null;
-    const vapid=String(state.settings.pushVapidPublicKey||'').trim();
+    let vapid=String(state.settings.pushVapidPublicKey||'').trim();
+
+    // Obtain the public VAPID key from the same HTTPS origin.
+    // This avoids putting the key directly into Chat.html.
+    if(!vapid){
+      vapid=await getVapidPublicKeyFromServer();
+      state.settings.pushVapidPublicKey=vapid;
+      saveSettings();
+    }
+
     if(reg?.pushManager && vapid){
       subscription=await reg.pushManager.getSubscription();
       if(!subscription){
@@ -11751,17 +11791,9 @@ async function boot(){
 
   handleInviteHash();
 
-  if(
-    !localGet(
-      APP.keys.password,
-      ''
-    )
-  ){
-    setTimeout(
-      openPasswordSetup,
-      400
-    );
-  }
+  // Do not open a modal automatically on startup. The persistent
+  // passphrase field in the sidebar remains available without blocking
+  // the rest of the application UI.
 }
 
 function openPasswordSetup(){
@@ -11887,6 +11919,7 @@ boot();
   // Everything is available by default. Only richText/translation remain user toggles.
   const alwaysOn=['reactions','customEmoji','stickers','mentions','messageSearch','files','voiceChannels','aiDatabase','aiImage','aiVoice','aiMemory','backup','browserNotify','notificationSound','wakeLock','autoReconnect','advancedDiagnostics','localWebGPU','aiToolControl','pythonBridge','groups'];
   if(state?.settings?.features){
+    state.settings.features.screenShare=false;
     for(const k of alwaysOn) state.settings.features[k]=true;
         if(typeof state.settings.features.richText!=='boolean') state.settings.features.richText=true;
     if(typeof state.settings.features.translation!=='boolean') state.settings.features.translation=true;
@@ -11928,6 +11961,13 @@ boot();
       selectPeer(id);
       renderDynamicUI();
       toast('✅ '+id+' とP2P接続しました');
+      setTimeout(()=>{
+        try{
+          if(typeof window.openDirectChatFullscreen==='function') window.openDirectChatFullscreen(id);
+        }catch(error){
+          addLog('WARN','open direct chat',error?.message||String(error));
+        }
+      },0);
       return true;
     }catch(e){
       addLog('WARN','direct peer',e?.message||String(e));
@@ -13019,6 +13059,273 @@ def summarize_messages(messages):
   }
   setTimeout(install,1000);
   setTimeout(install,3000);
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   Secure Chat - UI click safety fallback
+   Ensures visible static controls stay clickable even if a
+   secondary initialization layer fails.
+   ========================================================= */
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  function safe(fn,label){try{return fn()}catch(e){try{addLog('ERROR',label,e?.message||String(e))}catch{};try{toast(label+'に失敗しました')}catch{}}}
+  const handlers={
+    settingsBtn:()=>typeof openSettings==='function'&&openSettings(),
+    aiBtn:()=>typeof openAI==='function'&&openAI(),
+    searchBtn:()=>typeof openSearch==='function'&&openSearch(),
+    groupBtn:()=>typeof openGroup==='function'&&openGroup(),
+    friendBtn:()=>typeof openFriend==='function'&&openFriend(),
+    callBtn:()=>state?.selected?startCall(state.selected):toast('相手を選択してください'),
+    notificationBtn:()=>typeof enableNotifications==='function'&&enableNotifications(),
+    copyId:async()=>toast((await copyText(state.id))?'Peer IDをコピーしました':'コピーできませんでした'),
+    nameBtn:()=>typeof openName==='function'&&openName(),
+    profileBtn:()=>typeof openProfileSettings==='function'&&openProfileSettings(),
+    inviteBtn:()=>typeof openInvite==='function'&&openInvite(),
+    directConnectBtn:()=>typeof directConnect==='function'&&directConnect($('directPeerId')?.value),
+    passphraseSaveStable:()=>{const i=$('passphraseInputStable');const v=String(i?.value||'');if(!v){toast('パスフレーズを入力してください');return;}localSet(APP.keys.password,v);if(i)i.value='';const st=$('passphraseStateStable');if(st)st.textContent='設定済み（入力内容は表示しません）';toast('共有パスフレーズを保存しました')},
+    send:()=>typeof sendText==='function'&&sendText(),
+    attachBtn:()=>{const f=$('fileInput');if(!f){toast('添付機能を初期化できません');return;}f.dataset.mode='files';f.multiple=true;f.accept='';f.click()},
+    emojiBtn:()=>typeof openEmojiPicker==='function'&&openEmojiPicker(),
+    cancelReply:()=>{state.replyTo=null;state.editingId=null;if(typeof renderComposerState==='function')renderComposerState()},
+    micBtn:()=>typeof toggleMic==='function'&&toggleMic(),
+    camBtn:()=>typeof toggleCam==='function'&&toggleCam(),
+    wakeBtn:()=>typeof ensureWakeLock==='function'&&ensureWakeLock(),
+    hangBtn:()=>typeof hangup==='function'&&hangup()
+  };
+  function bind(){
+    for(const [id,fn] of Object.entries(handlers)){
+      const e=$(id);if(!e)continue;
+      e.type='button';
+      if(id==='send'){
+        e.dataset.scUiFallback='1';
+        continue;
+      }
+      if(e.dataset.scUiFallback==='1')continue;
+      if(typeof e.onclick!=='function'){
+        e.onclick=ev=>{ev.preventDefault();safe(fn,id)};
+      }
+      e.dataset.scUiFallback='1';
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
+  setTimeout(bind,250);
+  setTimeout(bind,1000);
+})();
+</script>
+<!-- =========================================================
+     Secure Chat - Dedicated direct chat screen
+     Opens automatically only after a real P2P DataChannel is connected.
+     ========================================================= -->
+<script>
+(function(){
+  'use strict';
+
+  if(window.__secureChatDirectChatLayer)return;
+  window.__secureChatDirectChatLayer=true;
+
+  const $=id=>document.getElementById(id);
+
+  function escDC(v){
+    try{
+      return typeof esc==='function'
+        ?esc(String(v??''))
+        :String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }catch{return '';}
+  }
+
+  function stateDC(){
+    return window.SecureChat?.state || null;
+  }
+
+  function connectedDC(peer){
+    try{return typeof window.isLiveDataPeer==='function' && window.isLiveDataPeer(peer)}catch{return false}
+  }
+
+  function nameDC(peer){
+    try{
+      if(typeof window.contactName==='function'){
+        const n=window.contactName(peer);
+        if(n && n!==peer)return n;
+      }
+    }catch{}
+    return 'ユーザー';
+  }
+
+  function ensure(){
+    let root=$('directChatFullscreen');
+    if(root)return root;
+
+    root=document.createElement('section');
+    root.id='directChatFullscreen';
+    root.innerHTML=`
+      <div class="dc-head">
+        <button type="button" class="btn dc-back" id="dcBack">←</button>
+        <div class="dc-peer-title">
+          <strong id="dcPeerName">ユーザー</strong>
+          <small id="dcPeerStatus">P2P未接続</small>
+        </div>
+        <button type="button" class="btn" id="dcTrade">🤝</button>
+        <button type="button" class="btn" id="dcCall">📹</button>
+      </div>
+      <div id="dcMessages" class="dc-messages"></div>
+      <div class="dc-composer-wrap">
+        <div class="dc-tools">
+          <button type="button" class="btn" id="dcEmoji">😀</button>
+          <button type="button" class="btn" id="dcFile">📎</button>
+        </div>
+        <textarea id="dcInput" rows="1" placeholder="メッセージ…"></textarea>
+        <button type="button" class="btn primary dc-send" id="dcSend">➤</button>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const style=document.createElement('style');
+    style.textContent=`
+      #directChatFullscreen{position:fixed;inset:0;z-index:12000;display:none;grid-template-rows:auto 1fr auto;background:var(--bg,#f6f6f2);color:inherit;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+      #directChatFullscreen.show{display:grid}
+      .dc-head{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line,#e5e7eb);background:var(--surface,#fff);min-width:0}
+      .dc-peer-title{flex:1;min-width:0;display:flex;flex-direction:column}.dc-peer-title strong,.dc-peer-title small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dc-peer-title small{color:var(--muted,#667085);font-size:11px}
+      .dc-messages{min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:12px;display:flex;flex-direction:column;gap:8px}
+      .dc-row{display:flex;align-items:flex-end}.dc-row.mine{justify-content:flex-end}.dc-bubble{max-width:min(82%,760px);padding:9px 11px;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.06);overflow-wrap:anywhere}.dc-row.mine .dc-bubble{background:#d9fdd3;border-top-right-radius:4px}.dc-row.theirs .dc-bubble{border-top-left-radius:4px}.dc-name{font-size:11px;color:#667085;margin-bottom:3px}.dc-text{white-space:pre-wrap;word-break:break-word;line-height:1.5}.dc-time{font-size:10px;color:#7b8190;margin-top:4px;text-align:right}
+      .dc-composer-wrap{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:end;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--surface,#fff);border-top:1px solid var(--line,#e5e7eb)}
+      .dc-tools{display:flex;gap:5px}.dc-tools .btn,.dc-head .btn,.dc-send{min-width:44px;min-height:44px;padding:9px}.dc-composer-wrap textarea{width:100%;min-height:44px;max-height:160px;resize:none;border:1px solid var(--line,#d1d5db);border-radius:13px;padding:11px 12px;font:inherit;box-sizing:border-box;background:#fff;color:inherit;outline:none}
+      @media(max-width:600px){.dc-head{padding-left:8px;padding-right:8px}.dc-bubble{max-width:88%}.dc-tools{gap:3px}.dc-composer-wrap{gap:5px}}
+    `;
+    document.head.appendChild(style);
+
+    $('dcBack').onclick=()=>close();
+    $('dcTrade').onclick=()=>{try{window.SecureChatTrade?.open?.()}catch(error){try{toast('取引画面を開けません: '+error.message)}catch{}}};
+    $('dcCall').onclick=()=>{const st=stateDC();if(!st?.selected){return}try{if(typeof window.startCall==='function')window.startCall(st.selected)}catch{}};
+    $('dcEmoji').onclick=()=>{try{if(typeof window.openEmojiPicker==='function')window.openEmojiPicker()}catch{}};
+    $('dcFile').onclick=()=>{try{const f=$('fileInput');if(!f)return;f.dataset.mode='files';f.multiple=true;f.accept='';f.click()}catch{}};
+    $('dcSend').onclick=()=>send();
+    $('dcInput').onkeydown=e=>{
+      if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+        e.preventDefault();
+        send();
+      }
+    };
+
+    return root;
+  }
+
+  function close(){
+    const root=$('directChatFullscreen');
+    if(root)root.classList.remove('show');
+  }
+
+  function render(peer){
+    const st=stateDC();
+    const box=$('dcMessages');
+    if(!st||!box)return;
+
+    $('dcPeerName').textContent=nameDC(peer);
+    $('dcPeerStatus').textContent=connectedDC(peer)?'🟢 P2P接続済み':'🔴 P2P未接続';
+
+    const messages=(st.chats||[])
+      .filter(m=>!m.groupId && (m.peer===peer || m.from===peer || m.to===peer))
+      .slice()
+      .sort((a,b)=>(a.time||0)-(b.time||0));
+
+    if(!messages.length){
+      box.innerHTML='<div class="empty">メッセージはまだありません。</div>';
+      return;
+    }
+
+    box.innerHTML=messages.map(m=>{
+      const mine=m.from===st.id;
+      const content=m.deleted?'このメッセージは削除されました':String(m.text||'');
+      return `<div class="dc-row ${mine?'mine':'theirs'}"><div class="dc-bubble"><div class="dc-name">${escDC(mine?(st.name||'自分'):nameDC(peer))}</div><div class="dc-text">${escDC(content)}</div><div class="dc-time">${escDC(typeof formatTime==='function'?formatTime(m.time):new Date(m.time||Date.now()).toLocaleTimeString())}</div></div></div>`;
+    }).join('');
+
+    requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
+  }
+
+  async function send(){
+    const st=stateDC();
+    const peer=String(st?.selected||'').trim();
+    const input=$('dcInput');
+    const value=String(input?.value||'').trim();
+
+    if(!st||!peer){
+      try{toast('相手を選択してください')}catch{}
+      return;
+    }
+    if(!connectedDC(peer)){
+      try{toast('⚠️ この相手とはP2P接続されていません')}catch{}
+      return;
+    }
+    if(!value)return;
+
+    const message=typeof baseMessage==='function'
+      ?baseMessage(peer,value,{})
+      :{id:'msg_'+Date.now(),peer,from:st.id,to:peer,type:'chat',text:value,time:Date.now(),edited:false,deleted:false,reactions:{}};
+
+    const button=$('dcSend');
+    if(button)button.disabled=true;
+
+    try{
+      if(typeof window.sendControlObject!=='function')throw new Error('P2P送信機能が利用できません');
+      await window.sendControlObject(peer,{type:'chat',message});
+      if(typeof storeMessage==='function')await storeMessage(message);
+      if(input)input.value='';
+      render(peer);
+      try{window.renderChat?.(peer)}catch{}
+    }catch(error){
+      try{toast('送信できませんでした: '+(error?.message||String(error)))}catch{}
+      try{addLog('ERROR','direct chat send',error?.message||String(error))}catch{}
+    }finally{
+      if(button)button.disabled=false;
+    }
+  }
+
+  window.openDirectChatFullscreen=function(peer){
+    const st=stateDC();
+    const id=String(peer||'').trim();
+    if(!st||!/^(?:\d{6})$/.test(id)||!connectedDC(id))return false;
+    ensure();
+    st.selected=id;
+    st.selectedGroup=null;
+    try{window.renderList?.()}catch{}
+    render(id);
+    $('directChatFullscreen').classList.add('show');
+    setTimeout(()=>{$('dcInput')?.focus()},50);
+    return true;
+  };
+
+  window.closeDirectChatFullscreen=close;
+  window.renderDirectChatFullscreen=()=>{const st=stateDC();if(!st?.selected)return;if($('directChatFullscreen')?.classList.contains('show'))render(st.selected)};
+
+  // When normal chat state is changed, keep the dedicated screen in sync.
+  const prevRenderChat=window.renderChat;
+  if(typeof prevRenderChat==='function'&&!prevRenderChat.__dcWrapped){
+    const wrapped=function(peer){
+      const result=prevRenderChat(peer);
+      try{if($('directChatFullscreen')?.classList.contains('show'))render(String(peer||stateDC()?.selected||''))}catch{}
+      return result;
+    };
+    wrapped.__dcWrapped=true;
+    window.renderChat=wrapped;
+    try{renderChat=wrapped}catch{}
+  }
+
+  // Keep the overlay updated when a new message arrives.
+  const prevReceive=window.receivePacket;
+  if(typeof prevReceive==='function'&&!prevReceive.__dcWrapped){
+    const wrapped=async function(remote,obj){
+      const result=await prevReceive(remote,obj);
+      try{if(obj?.type==='chat'&&$('directChatFullscreen')?.classList.contains('show'))render(String(remote||''))}catch{}
+      return result;
+    };
+    wrapped.__dcWrapped=true;
+    window.receivePacket=wrapped;
+    try{receivePacket=wrapped}catch{}
+  }
+
 })();
 </script>
 
