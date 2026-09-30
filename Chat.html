@@ -956,9 +956,9 @@ html,body{min-height:100%;}
    ========================================================= */
 
 const APP={
-  version:'5.1.0',
+  version:'5.1.1',
   dbName:'SecureChatDB',
-  dbVersion:8,
+  dbVersion:12,
   modelDbName:'SecureChatModels',
   modelDbVersion:2,
 
@@ -2512,17 +2512,10 @@ function createRTC(
       monitorSecurity(pc);
       renderList();
 
-      // Direct connections open the dedicated chat screen automatically.
+      // The control channel may still be opening here. Retry until both PC and
+      // DataChannel are really ready; bindControlChannel.onopen does the same.
       if(kind==='data'){
-        setTimeout(()=>{
-          try{
-            if(typeof window.openDirectChatFullscreen==='function' && isLiveDataPeer(remote)){
-              window.openDirectChatFullscreen(remote);
-            }
-          }catch(error){
-            addLog('WARN','open direct chat',error?.message||String(error));
-          }
-        },120);
+        scOpenDirectChatWhenReady(remote);
       }
     }
 
@@ -2607,6 +2600,20 @@ function bindControlChannel(c){
       c.remote
     );
 
+    // This is the reliable point at which the chat is actually usable.
+    // Do not wait for a hello packet or pc.connectionState callback.
+    scOpenDirectChatWhenReady(c.remote);
+
+    // The receiver gets a local alert as soon as the inbound data channel opens.
+    // The initiator is notified later when the receiver's hello comes back.
+    if(c.initiator===false){
+      scNotifyReceiverConnection(
+        c.remote,
+        c.metadata?.name || c.metadata?.displayName || '',
+        c
+      ).catch(e=>addLog('WARN','connection notice',e?.message||String(e)));
+    }
+
     sendControlObject(
       c.remote,
       {
@@ -2615,7 +2622,7 @@ function bindControlChannel(c){
         features:state.settings.features,
         version:APP.version
       }
-    ).catch(()=>{});
+    ).catch(e=>addLog('WARN','hello send',e?.message||String(e)));
 
     renderList();
   };
@@ -2656,6 +2663,18 @@ function bindControlChannel(c){
               password
             )
           :wrapper;
+
+      if(object?.type==='hello'){
+        if(object.name){
+          c.metadata=c.metadata||{};
+          c.metadata.remoteName=String(object.name);
+        }
+        // Hello confirms the remote side is alive. Keep the dedicated screen in sync.
+        // The actual connection alert is intentionally receiver-side only: the person
+        // who accepted the inbound connection gets the alert, while the initiator simply
+        // sees the chat screen open.
+        scOpenDirectChatWhenReady(c.remote);
+      }
 
       await receivePacket(
         c.remote,
@@ -2864,6 +2883,11 @@ async function ensureDataConnection(
 
   bindControlChannel(c);
   bindFileChannel(c);
+
+  // Ask the central signaling layer to trigger Web Push for the target.
+  // This is sent before the WebRTC offer because the target may have Secure Chat
+  // completely closed. The server decides whether a PushSubscription exists.
+  try{ scRequestPeerPush(remote); }catch{}
 
   await createOffer(c);
 
@@ -3201,6 +3225,115 @@ function isLiveDataPeer(remote){
   return !!(c && c.pc && c.pc.connectionState==='connected' && c.control?.readyState==='open');
 }
 window.isLiveDataPeer=isLiveDataPeer;
+
+/* =========================================================
+   Reliable direct-connection lifecycle
+   - A direct chat opens only after the control DataChannel is OPEN.
+   - The receiver gets an alert() when the connection is actually established.
+   - A short-lived push request is sent while the signaling socket is available.
+   ========================================================= */
+const SC_CONNECTION_NOTICE_SEEN = new Map();
+
+function scConnectionPeerName(remote, hinted=''){
+  const h=String(hinted||'').trim();
+  if(h && h!==remote) return h;
+  try{
+    const n=typeof contactName==='function' ? contactName(remote) : '';
+    if(n && n!==remote) return String(n);
+  }catch{}
+  return h || 'ユーザー';
+}
+
+function scOpenDirectChatWhenReady(remote, attempt=0){
+  if(!isLiveDataPeer(remote)){
+    if(attempt<35){
+      setTimeout(()=>scOpenDirectChatWhenReady(remote,attempt+1),120);
+    }
+    return false;
+  }
+  try{
+    if(typeof window.openDirectChatFullscreen==='function'){
+      return !!window.openDirectChatFullscreen(remote);
+    }
+  }catch(e){
+    addLog('WARN','direct chat open',e?.message||String(e));
+  }
+  if(attempt<35){
+    setTimeout(()=>scOpenDirectChatWhenReady(remote,attempt+1),120);
+  }
+  return false;
+}
+
+async function scNotifyReceiverConnection(remote, name, connection, attempt=0){
+  if(!isLiveDataPeer(remote)){
+    if(attempt<35){
+      setTimeout(()=>{
+        scNotifyReceiverConnection(remote,name,connection,attempt+1).catch(e=>addLog('WARN','connection notice retry',e?.message||String(e)));
+      },120);
+    }
+    return false;
+  }
+
+  const key=`${remote}::${connection?.connectionId||'data'}`;
+  if(SC_CONNECTION_NOTICE_SEEN.has(key)) return true;
+  SC_CONNECTION_NOTICE_SEEN.set(key,Date.now());
+  if(SC_CONNECTION_NOTICE_SEEN.size>200){
+    const cutoff=Date.now()-120000;
+    for(const [k,t] of SC_CONNECTION_NOTICE_SEEN){
+      if(t<cutoff) SC_CONNECTION_NOTICE_SEEN.delete(k);
+    }
+  }
+
+  const display=scConnectionPeerName(remote,name);
+  try{ playNotificationSound(); }catch{}
+
+  if(document.visibilityState==='visible'){
+    try{
+      window.alert(`📡 ${display} と接続されました\n\nこの相手とチャットできます。`);
+    }catch(e){
+      addLog('WARN','connection alert',e?.message||String(e));
+    }
+  }else{
+    try{
+      if(typeof browserNotify==='function'){
+        await browserNotify(
+          `${display} と接続されました`,
+          'Secure Chatでチャットできます。',
+          {type:'peer-connected',peerId:String(remote),name:display}
+        );
+      }
+    }catch(e){
+      addLog('WARN','connection notification',e?.message||String(e));
+    }
+  }
+
+  try{ toast(`📡 ${display} と接続されました`); }catch{}
+  addLog('INFO','peer connected',`${remote} (${display})`);
+  return true;
+}
+
+function scRequestPeerPush(remote){
+  const id=String(remote||'').trim();
+  if(!/^\d{6}$/.test(id)) return false;
+  try{
+    if(state.ws?.readyState===WebSocket.OPEN){
+      return signalSend({
+        type:'push-peer-connected',
+        to:id,
+        from:String(state.id||''),
+        name:String(state.name||'ユーザー'),
+        timestamp:Date.now()
+      });
+    }
+  }catch(e){
+    addLog('WARN','pre-connect push',e?.message||String(e));
+  }
+  return false;
+}
+
+window.scOpenDirectChatWhenReady=scOpenDirectChatWhenReady;
+window.scNotifyReceiverConnection=scNotifyReceiverConnection;
+window.scRequestPeerPush=scRequestPeerPush;
 
 function dropRTCConnection(c){
   if(!c)return;
@@ -11133,10 +11266,12 @@ async function loadDBState(){
     state.storageReady=
       false;
 
+    try{db.db=null}catch{}
+
     addLog(
       'ERROR',
       'IndexedDB unavailable',
-      e.message
+      `${e?.name||'Error'}: ${e?.message||String(e)}`
     );
   }
 }
@@ -11919,7 +12054,6 @@ boot();
   // Everything is available by default. Only richText/translation remain user toggles.
   const alwaysOn=['reactions','customEmoji','stickers','mentions','messageSearch','files','voiceChannels','aiDatabase','aiImage','aiVoice','aiMemory','backup','browserNotify','notificationSound','wakeLock','autoReconnect','advancedDiagnostics','localWebGPU','aiToolControl','pythonBridge','groups'];
   if(state?.settings?.features){
-    state.settings.features.screenShare=false;
     for(const k of alwaysOn) state.settings.features[k]=true;
         if(typeof state.settings.features.richText!=='boolean') state.settings.features.richText=true;
     if(typeof state.settings.features.translation!=='boolean') state.settings.features.translation=true;
@@ -12136,31 +12270,36 @@ boot();
   const buttonSpecs={settingsBtn:'設定',aiBtn:'AI',openAiQuick:'AI',searchBtn:'検索',groupBtn:'グループ',friendBtn:'フレンド追加',callBtn:'通話',notificationBtn:'通知',copyId:'IDコピー',nameBtn:'名前',profileBtn:'プロフィール',inviteBtn:'招待',directConnectBtn:'直接Peer接続',passphraseSaveStable:'パスフレーズ保存',cancelReply:'返信/編集取消',attachBtn:'添付',emojiBtn:'絵文字',send:'送信',micBtn:'マイク',camBtn:'カメラ',wakeBtn:'Wake Lock',hangBtn:'通話終了'};
   function audit(){
     const rows=[];
-    for(const [id,label] of Object.entries(buttonSpecs)){
-      const e=$id(id);
-      const visible=!!e&&e.getClientRects().length>0;
-      const wired=!!e&&(typeof e.onclick==='function'||e.dataset.scBound==='1');
-      rows.push({label,ok:visible&&!e.disabled&&wired,detail:!e?'未検出':e.disabled?'無効':!visible?'非表示':wired?'配線確認済み（未クリック）':'未接続'});
-    }
-    for(const b of document.querySelectorAll('.tabs button[data-tab]')){
-      const visible=b.getClientRects().length>0;
-      const wired=typeof b.onclick==='function'||b.dataset.scBound==='1';
-      rows.push({label:'タブ '+b.textContent.trim(),ok:visible&&!b.disabled&&wired,detail:b.disabled?'無効':!visible?'非表示':wired?'配線確認済み（未クリック）':'未接続'});
-    }
+    const expectedHidden=new Set(['cancelReply','micBtn','camBtn','wakeBtn','hangBtn','groupFsBack','groupFsClose']);
+    const isVisible=e=>!!e&&e.getClientRects().length>0;
+    const isWired=e=>!!e&&(typeof e.onclick==='function'||e.dataset.scBound==='1'||e.dataset.scSendBound==='1'||e.dataset.scDynamicBound==='1');
+    const rowFor=(e,label)=>{
+      if(!e)return {label,ok:false,detail:'未検出'};
+      const visible=isVisible(e);
+      const wired=isWired(e);
+      const disabled=!!e.disabled;
+      if(disabled)return {label,ok:false,detail:'無効'};
+      if(!wired)return {label,ok:false,detail:visible?'未接続':'非表示・未接続'};
+      if(!visible)return {label,ok:true,detail:expectedHidden.has(e.id)?'配線確認済み（現在は非表示）':'配線確認済み（非表示）'};
+      return {label,ok:true,detail:'配線確認済み（未クリック）'};
+    };
+    for(const [id,label] of Object.entries(buttonSpecs)) rows.push(rowFor($id(id),label));
+    for(const b of document.querySelectorAll('.tabs button[data-tab]')) rows.push(rowFor(b,'タブ '+b.textContent.trim()));
     for(const b of document.querySelectorAll('button')){
       if(b.matches('[data-close],#featureDiagReload,#featureDiagRebuild'))continue;
-      const wired=typeof b.onclick==='function'||b.dataset.action||b.dataset.connectPeer||b.dataset.friendAccept||b.dataset.friendReject;
-      if(!rows.some(r=>r.label===b.textContent.trim())) rows.push({label:(b.id||b.textContent||'').trim().slice(0,40),ok:!!wired&&b.getClientRects().length>0&&!b.disabled,detail:!wired?'未接続':b.disabled?'無効':'配線確認済み（未クリック）'});
+      if(!rows.some(r=>r.label===b.textContent.trim())){
+        rows.push(rowFor(b,(b.id||b.textContent||'').trim().slice(0,40)));
+      }
     }
     return rows;
   }
   window.openFeatureDiagnostics=async function(){
     const checks=[
-      ['IndexedDB',!!window.indexedDB,state.storageReady?'接続済み':'未接続'],
+      ['IndexedDB',!!window.indexedDB&&!!state.storageReady,state.storageReady?'接続済み':'未接続'],
       ['Web Crypto',!!window.crypto?.subtle,'AES-GCM API'],
       ['WebRTC',!!window.RTCPeerConnection,'RTCPeerConnection'],
       ['カメラ・マイク',!!navigator.mediaDevices?.getUserMedia,'getUserMedia'],
-      ['WebSocket',!!window.WebSocket,state.wsReady?'接続済み':'未接続'],
+      ['WebSocket',!!window.WebSocket&&!!state.wsReady,state.wsReady?'接続済み':'未接続'],
       ['WebGPU',!!navigator.gpu,'API'],
       ['AI DB',Array.isArray(state.aiIndex),`${state.aiIndex?.length||0}件`],
       ['ステッカーDB',Array.isArray(state.stickers),`${state.stickers?.length||0}件`],
@@ -12186,7 +12325,6 @@ boot();
   function wireSendButton(){
     const e=$id('send');
     if(!e || e.dataset.scSendBound==='1') return;
-    e.onclick=null;
     let lastActivation=0;
     const run=()=>{
       const t=Date.now();
@@ -12194,17 +12332,21 @@ boot();
       lastActivation=t;
       safe(()=>sendText(),'送信');
     };
+    // Keep a real onclick handler so diagnostics can verify the button even
+    // before pointer/touch events fire. The short debounce prevents the
+    // synthetic click after touch/pointerup from sending twice.
+    e.onclick=ev=>{
+      ev.preventDefault();
+      run();
+    };
     e.addEventListener('pointerup',ev=>{
       if(ev.pointerType==='touch' || ev.pointerType==='pen'){
         ev.preventDefault();
         run();
       }
     },{passive:false});
-    e.addEventListener('click',ev=>{
-      ev.preventDefault();
-      run();
-    },{passive:false});
     e.dataset.scSendBound='1';
+    e.dataset.scBound='1';
     e.setAttribute('aria-disabled','false');
   }
 
@@ -12374,7 +12516,9 @@ def summarize_messages(messages):
     `;
     document.head.appendChild(style);
     $('groupFsBack').onclick=()=>closeGroupFS();
+    $('groupFsBack').dataset.scDynamicBound='1';
     $('groupFsClose').onclick=()=>leaveOrCloseGroupFS();
+    $('groupFsClose').dataset.scDynamicBound='1';
     $('groupFsComposer').onsubmit=async e=>{e.preventDefault();const g=state.groups.find(x=>x.id===state.selectedGroup);const inp=$('groupFsInput');const text=String(inp?.value||'').trim();if(!g||!text)return;await sendGroupMessageV2(g,text);inp.value='';renderGroupFS(g);};
     return el;
   }
@@ -12972,11 +13116,8 @@ def summarize_messages(messages):
 
     const wrapped=async function(remote,obj){
       const result=await current(remote,obj);
-      if(obj?.type==='hello'){
-        setTimeout(()=>{
-          showConnectionNotice(remote,obj);
-        },150);
-      }
+      // Connection notifications are now handled directly by the real DataChannel
+      // lifecycle. Do not emit a second alert here.
       return result;
     };
 
@@ -13032,10 +13173,13 @@ def summarize_messages(messages):
     サーバー側がpush-peer-connectedを扱う構成の場合にPushを送れる。
   */
   function installConnectionNotifyAPI(){
-    window.secureChatNotifyPeerConnected=function(targetPeer,targetName=''){
+    window.secureChatNotifyPeerConnected=function(targetPeer,targetName='',preConnect=false){
       const st=getState();
       const to=String(targetPeer||'').trim();
-      if(!st || !safePeerId(to) || !isConnected(to)) return false;
+      if(!st || !safePeerId(to)) return false;
+      // preConnect=true is specifically for the case where the target may have the
+      // site completely closed. It must not require an already-open DataChannel.
+      if(!preConnect && !isConnected(to)) return false;
       return notifyServer({
         type:'push-peer-connected',
         to:to,
@@ -13326,6 +13470,30 @@ def summarize_messages(messages):
     try{receivePacket=wrapped}catch{}
   }
 
+})();
+</script>
+
+<script>
+/* =========================================================
+   Secure Chat - final connection safety net
+   ========================================================= */
+(function(){
+  'use strict';
+  function sweep(){
+    try{
+      const st=window.SecureChat?.state;
+      if(!st?.connections?.values)return;
+      for(const c of st.connections.values()){
+        if(c?.kind==='data' && c?.pc?.connectionState==='connected' && c?.control?.readyState==='open'){
+          window.scOpenDirectChatWhenReady?.(c.remote);
+        }
+      }
+    }catch(error){
+      try{window.addLog?.('WARN','connection sweep',error?.message||String(error))}catch{}
+    }
+  }
+  setTimeout(sweep,300);
+  setInterval(sweep,1500);
 })();
 </script>
 
