@@ -1303,6 +1303,8 @@ const state={
   chats:[],
   friends:[],
   friendRequests:[],
+  sentFriendRequests:jsonParse(localGet('securechat.sentFriendRequests.v1','[]'),[]),
+  peerProfiles:jsonParse(localGet('securechat.peerProfiles.v1','{}'),{}),
   groups:[],
   callsHistory:[],
   logs:[],
@@ -2775,35 +2777,43 @@ async function sendControlObject(
       );
   }
 
-  const password=
-    localGet(
-      APP.keys.password,
-      ''
-    );
-
-  if(!password){
-    throw new Error(
-      '共有パスフレーズを設定してください'
-    );
-  }
-
-  const encrypted=
-    await encryptJSON(
-      object,
-      password
-    );
-
   await waitChannel(
     c.control,
     8000
   );
 
-  c.control.send(
-    JSON.stringify({
-      encrypted:true,
-      value:encrypted
-    })
-  );
+  // These packets only carry connection/profile/request metadata. Sending them
+  // in plaintext avoids a deadlock where two new users cannot exchange friend
+  // requests until they have already configured matching chat passphrases.
+  // Actual chat content, files, edits, reactions and receipts remain encrypted.
+  const plainControlTypes=new Set([
+    'hello',
+    'friend-request',
+    'friend-accepted',
+    'friend-rejected',
+    'friend-request-ack'
+  ]);
+
+  if(plainControlTypes.has(String(object?.type||''))){
+    if(c.control?.readyState!=='open'){
+      throw new Error('制御DataChannelが開いていません');
+    }
+    c.control.send(JSON.stringify(object));
+    addLog('INFO','control metadata sent',`${object.type} -> ${remote}`);
+    return true;
+  }
+
+  const password=localGet(APP.keys.password,'');
+  if(!password){
+    throw new Error('共有パスフレーズを設定してください');
+  }
+
+  const encrypted=await encryptJSON(object,password);
+  if(c.control?.readyState!=='open'){
+    throw new Error('制御DataChannelが閉じています');
+  }
+  c.control.send(JSON.stringify({encrypted:true,value:encrypted}));
+  return true;
 }
 
 function waitChannel(
@@ -3138,6 +3148,81 @@ async function handleCandidate(remote,payload){
    Incoming / outgoing messages
    ========================================================= */
 
+const SC_LOCAL_HISTORY_KEY='securechat.messageHistory.v2';
+const SC_LOCAL_HISTORY_MAX_CHARS=1800000;
+
+function scHistorySafeMessage(message){
+  const row={...(message||{})};
+  // Do not put file blobs/base64 payloads into localStorage. IndexedDB keeps the
+  // full attachment record; the fallback retains its history/metadata.
+  if(row.attachment && typeof row.attachment==='object'){
+    const a={...row.attachment};
+    for(const key of ['data','blob','bytes','buffer','base64','dataUrl','payload','content']) delete a[key];
+    row.attachment=a;
+  }
+  for(const key of ['rawBytes','fileBytes','base64Data','blobData']) delete row[key];
+  return row;
+}
+
+function loadLocalMessageHistory(){
+  try{
+    const raw=localStorage.getItem(SC_LOCAL_HISTORY_KEY);
+    const value=raw?JSON.parse(raw):[];
+    return Array.isArray(value)?value.filter(m=>m&&m.id&&Number.isFinite(Number(m.time))):[];
+  }catch(error){
+    try{addLog('WARN','local history read',error?.message||String(error))}catch{}
+    return [];
+  }
+}
+
+function persistLocalMessageHistory(){
+  try{
+    let rows=(state.chats||[]).slice(-1500).map(scHistorySafeMessage);
+    let raw=JSON.stringify(rows);
+    while(raw.length>SC_LOCAL_HISTORY_MAX_CHARS && rows.length>20){
+      rows=rows.slice(Math.max(1,Math.ceil(rows.length*0.12)));
+      raw=JSON.stringify(rows);
+    }
+    localStorage.setItem(SC_LOCAL_HISTORY_KEY,raw);
+    return true;
+  }catch(error){
+    try{addLog('WARN','local history write',error?.message||String(error))}catch{}
+    return false;
+  }
+}
+
+function mergeMessageHistory(dbRows,localRows){
+  const merged=new Map();
+  for(const m of (dbRows||[])){if(m?.id)merged.set(String(m.id),m);}
+  for(const local of (localRows||[])){
+    if(!local?.id)continue;
+    const key=String(local.id),dbMessage=merged.get(key);
+    if(!dbMessage){merged.set(key,local);continue;}
+    const combined={...dbMessage,...local};
+    if(dbMessage.attachment && typeof dbMessage.attachment==='object' && (dbMessage.attachment.data||dbMessage.attachment.blob||dbMessage.attachment.bytes||dbMessage.attachment.base64)){
+      combined.attachment=dbMessage.attachment;
+    }else if(!local.attachment && dbMessage.attachment){
+      combined.attachment=dbMessage.attachment;
+    }
+    merged.set(key,combined);
+  }
+  return [...merged.values()].sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
+}
+
+function rememberPeerProfile(id,name,extra={}){
+  const peer=String(id||'').trim();
+  if(!validPeerId(peer)||peer===String(state.id))return false;
+  if(!state.peerProfiles||typeof state.peerProfiles!=='object')state.peerProfiles={};
+  const old=state.peerProfiles[peer]||{};
+  const clean=String(name||old.name||'').trim().slice(0,80);
+  state.peerProfiles[peer]={...old,...extra,id:peer,name:clean||old.name||peer,updatedAt:now()};
+  try{localStorage.setItem('securechat.peerProfiles.v1',JSON.stringify(state.peerProfiles));}catch(error){addLog('WARN','peer profile cache',error?.message||String(error));}
+  if(state.storageReady){
+    db.put('peerState',{id:peer,peerId:peer,name:state.peerProfiles[peer].name,updatedAt:state.peerProfiles[peer].updatedAt}).catch(error=>addLog('WARN','peer profile DB save',error?.message||String(error)));
+  }
+  return true;
+}
+
 function baseMessage(
   peer,
   text,
@@ -3162,48 +3247,39 @@ function baseMessage(
 }
 
 async function storeMessage(message){
-  state.chats.push(
-    message
-  );
+  if(!message || !message.id){
+    throw new Error('保存するメッセージIDがありません');
+  }
+  const id=String(message.id);
+  const index=state.chats.findIndex(m=>String(m.id)===id);
+  if(index>=0) state.chats[index]={...state.chats[index],...message};
+  else state.chats.push(message);
+  state.chats.sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
 
-  if(
-    state.storageReady
-  ){
-    await db.put(
-      'messages',
-      message
-    ).catch(()=>{});
+  // Write fallback first, so a DB outage or storage-upgrade failure does not
+  // silently lose the visible conversation history.
+  persistLocalMessageHistory();
+  try{
+    await db.put('messages',message);
+    state.storageReady=true;
+  }catch(error){
+    state.storageReady=false;
+    addLog('WARN','message IndexedDB save failed',`${id}: ${error?.message||String(error)}`);
   }
 
-  if(
-    featureOn('aiDatabase')
-  ){
-    await indexMessage(
-      message
-    );
+  if(featureOn('aiDatabase')){
+    try{await indexMessage(message)}catch(error){addLog('WARN','message AI index failed',error?.message||String(error));}
   }
 }
 
 async function updateMessage(
   message
 ){
-  const i=
-    state.chats.findIndex(
-      m=>m.id===message.id
-    );
-
-  if(i>=0){
-    state.chats[i]=message;
-  }
-
-  if(
-    state.storageReady
-  ){
-    await db.put(
-      'messages',
-      message
-    ).catch(()=>{});
-  }
+  const i=state.chats.findIndex(m=>String(m.id)===String(message?.id));
+  if(i>=0)state.chats[i]={...state.chats[i],...message};
+  persistLocalMessageHistory();
+  try{await db.put('messages',message);state.storageReady=true;}
+  catch(error){state.storageReady=false;addLog('WARN','message IndexedDB update failed',`${message?.id||''}: ${error?.message||String(error)}`);}
 }
 
 async function deleteMessagePermanent(
@@ -3221,14 +3297,8 @@ async function deleteMessagePermanent(
     1
   );
 
-  if(
-    state.storageReady
-  ){
-    await db.delete(
-      'messages',
-      id
-    ).catch(()=>{});
-  }
+  persistLocalMessageHistory();
+  try{await db.delete('messages',id);}catch(error){addLog('WARN','message IndexedDB delete failed',error?.message||String(error));}
 }
 
 function isLiveDataPeer(remote){
@@ -3627,14 +3697,9 @@ async function receivePacket(
 ){
   if(!object?.type)return;
 
-  if(
-    object.type==='hello'
-  ){
-    await addFriend(
-      remote,
-      object.name||remote,
-      true
-    );
+  if(object.type==='hello'){
+    rememberPeerProfile(remote,object.name||remote,{version:object.version||'',features:object.features||{}});
+    addLog('INFO','peer hello',`${remote} (${String(object.name||'ユーザー')})`);
     return;
   }
 
@@ -3889,12 +3954,9 @@ function contactName(id){
     return state.name;
   }
 
-  const f=
-    state.friends.find(
-      x=>x.id===id
-    );
-
-  return f?.name||id;
+  const f=state.friends.find(x=>x.id===id);
+  const profile=state.peerProfiles?.[id];
+  return f?.name||profile?.name||id;
 }
 
 function callDisplayName(remote, metadata={}){
@@ -3970,29 +4032,29 @@ async function addFriendDialog(id,name){
   if(!validPeerId(peer)){toast('6桁のPeer IDを入力してください');return false;}
   if(peer===String(state.id)){toast('自分自身は追加できません');return false;}
   if(!state.wsReady||state.ws?.readyState!==WebSocket.OPEN){toast('シグナリング未接続です。ネットワーク状態を確認してください');return false;}
+  if(state.friends.some(f=>String(f.id)===peer)){toast('この相手はすでにフレンドです');return true;}
   try{
     if(!isLiveDataPeer(peer)){
       const connector=window.connectDirectPeer||window.directConnect;
       if(typeof connector!=='function')throw new Error('接続機能が初期化されていません');
       const ok=await connector(peer);
-      if(!ok||!isLiveDataPeer(peer))throw new Error('接続が完了していません。相手側で「接続」を許可してください');
+      if(!ok||!isLiveDataPeer(peer))throw new Error('接続が完了していません。相手側で接続要求を許可してください');
     }
-    await addFriend(peer,display,true);
-    try{
-      await sendControlObject(peer,{type:'friend-request',name:state.name,requestedName:display,time:now()});
-      toast(`👥 ${display} にフレンド申請を送信しました`);
-    }catch(error){
-      addLog('WARN','friend request send',`${peer}: ${error?.message||String(error)}`);
-      toast('接続はできましたが、申請送信に失敗しました: '+(error?.message||'通信エラー'));
-      renderList();
-      return false;
-    }
+    const sentAt=now();
+    await sendControlObject(peer,{type:'friend-request',name:state.name,requestedName:display,requestId:`fr_${state.id}_${peer}_${sentAt}`,time:sentAt});
+    if(!Array.isArray(state.sentFriendRequests))state.sentFriendRequests=[];
+    const row={id:peer,name:display,time:sentAt,status:'sent'};
+    const old=state.sentFriendRequests.findIndex(r=>String(r.id)===peer);
+    if(old>=0)state.sentFriendRequests[old]=row;else state.sentFriendRequests.push(row);
+    try{localStorage.setItem('securechat.sentFriendRequests.v1',JSON.stringify(state.sentFriendRequests));}catch(error){addLog('WARN','sent friend request cache',error?.message||String(error));}
+    rememberPeerProfile(peer,display);
+    toast(`👥 ${display} にフレンド申請を送信しました。承認されるまでフレンドには追加されません`);
     selectPeer(peer);
     renderList();
     return true;
   }catch(error){
     addLog('WARN','friend add/connect',`${peer}: ${error?.message||String(error)}`);
-    toast(`フレンド追加/接続に失敗しました: ${error?.message||'接続エラー'}`);
+    toast(`フレンド申請を送信できません: ${error?.message||'接続エラー'}`);
     return false;
   }
 }
@@ -11250,6 +11312,13 @@ function applyTheme(){
   }
 }
 
+
+/* =========================================================
+   Durable conversation-history fallback
+   ========================================================= */
+window.addEventListener('pagehide',()=>{try{persistLocalMessageHistory()}catch{}},{capture:true});
+window.addEventListener('beforeunload',()=>{try{persistLocalMessageHistory()}catch{}},{capture:true});
+
 /* =========================================================
    DB Load
    ========================================================= */
@@ -11295,17 +11364,31 @@ async function loadDBState(){
         db.get('meta','aiState')
       ]);
 
-    state.chats=
-      chats.sort(
-        (a,b)=>a.time-b.time
-      );
+    const localHistory=loadLocalMessageHistory();
+    state.chats=mergeMessageHistory(chats,localHistory);
+    // If the local fallback contains rows that were not in IndexedDB, restore them.
+    const dbMessageIds=new Set((chats||[]).map(m=>String(m.id)));
+    for(const message of localHistory){
+      if(message?.id&&!dbMessageIds.has(String(message.id))){
+        db.put('messages',message).catch(error=>addLog('WARN','history recovery write',error?.message||String(error)));
+      }
+    }
+    persistLocalMessageHistory();
 
     state.friends=
       friends.sort(
         (a,b)=>a.added-b.added
       );
 
-    state.friendRequests=(friendRequests||[]).filter(r=>validPeerId(r.id)&&r.id!==state.id).sort((a,b)=>(b.time||0)-(a.time||0));
+    let localRequests=[];
+    try{const raw=localStorage.getItem('securechat.friendRequests.v1');localRequests=raw?JSON.parse(raw):[];}catch{}
+    const requestMap=new Map();
+    for(const r of (friendRequests||[]))if(validPeerId(r.id)&&r.id!==state.id)requestMap.set(String(r.id),r);
+    for(const r of (Array.isArray(localRequests)?localRequests:[]))if(validPeerId(r.id)&&r.id!==state.id)requestMap.set(String(r.id),{...requestMap.get(String(r.id)),...r});
+    state.friendRequests=[...requestMap.values()].sort((a,b)=>(b.time||0)-(a.time||0));
+    try{localStorage.setItem('securechat.friendRequests.v1',JSON.stringify(state.friendRequests));}catch{}
+    try{const raw=localStorage.getItem('securechat.peerProfiles.v1');const profiles=raw?JSON.parse(raw):{};if(profiles&&typeof profiles==='object')state.peerProfiles={...(state.peerProfiles||{}),...profiles};}catch{}
+    if(!Array.isArray(state.sentFriendRequests))state.sentFriendRequests=[];
 
     state.groups=
       groups.sort(
@@ -11370,16 +11453,15 @@ async function loadDBState(){
     );
 
   }catch(e){
-    state.storageReady=
-      false;
-
+    state.storageReady=false;
     try{db.db=null}catch{}
-
-    addLog(
-      'ERROR',
-      'IndexedDB unavailable',
-      `${e?.name||'Error'}: ${e?.message||String(e)}`
-    );
+    // Even if IndexedDB is blocked by browser policy or a failed upgrade,
+    // restore prior messages from the compact local history fallback.
+    state.chats=mergeMessageHistory([],loadLocalMessageHistory());
+    try{const raw=localStorage.getItem('securechat.friendRequests.v1');const reqs=raw?JSON.parse(raw):[];if(Array.isArray(reqs))state.friendRequests=reqs.filter(r=>validPeerId(r.id)&&r.id!==state.id);}catch{}
+    try{const raw=localStorage.getItem('securechat.peerProfiles.v1');const profiles=raw?JSON.parse(raw):{};if(profiles&&typeof profiles==='object')state.peerProfiles={...(state.peerProfiles||{}),...profiles};}catch{}
+    addLog('ERROR','IndexedDB unavailable',`${e?.name||'Error'}: ${e?.message||String(e)}`);
+    addLog('INFO','history fallback loaded',`${state.chats.length} cached messages`);
   }
 }
 
@@ -12261,10 +12343,11 @@ boot();
     const btns=[...document.querySelectorAll(`[data-friend-accept="${CSS.escape(id)}"],[data-friend-reject="${CSS.escape(id)}"]`)];
     btns.forEach(b=>b.disabled=true);
     try{
-      if(allow){await addFriend(id,req.name||'ユーザー',true);}
-      try{await sendControlObject(id,{type:allow?'friend-accepted':'friend-rejected',name:state.name});}
-      catch(e){addLog('WARN','friend response send',e?.message||String(e));}
+      if(!isLiveDataPeer(id))throw new Error('申請相手とのP2P接続が切れています。再接続してからもう一度操作してください');
+      await sendControlObject(id,{type:allow?'friend-accepted':'friend-rejected',name:state.name,respondedAt:Date.now()});
+      if(allow){await addFriend(id,req.name||'ユーザー',true);rememberPeerProfile(id,req.name||'ユーザー');}
       state.friendRequests=state.friendRequests.filter(x=>x.id!==id);
+      try{localStorage.setItem('securechat.friendRequests.v1',JSON.stringify(state.friendRequests));}catch{}
       if(state.storageReady) await db.delete('friendRequests',id).catch(e=>addLog('WARN','friend request delete',e?.message||String(e)));
       renderList();
       toast(allow?'フレンド申請を承認しました':'フレンド申請を拒否しました');
@@ -12281,8 +12364,8 @@ boot();
     const recv=async function(remote,obj){
       try{
         if(obj?.type==='friend-request'){await window.handleIncomingFriendRequest(remote,obj);return;}
-        if(obj?.type==='friend-accepted'){await addFriend(remote,obj.name||remote,true);renderList();toast((obj.name||remote)+' がフレンド申請を許可しました');return;}
-        if(obj?.type==='friend-rejected'){toast((obj.name||remote)+' がフレンド申請を拒否しました');return;}
+        if(obj?.type==='friend-accepted'){await addFriend(remote,obj.name||remote,true);rememberPeerProfile(remote,obj.name||remote);state.sentFriendRequests=(state.sentFriendRequests||[]).filter(r=>String(r.id)!==String(remote));try{localStorage.setItem('securechat.sentFriendRequests.v1',JSON.stringify(state.sentFriendRequests))}catch{};renderList();toast((obj.name||remote)+' がフレンド申請を承認しました');return;}
+        if(obj?.type==='friend-rejected'){state.sentFriendRequests=(state.sentFriendRequests||[]).filter(r=>String(r.id)!==String(remote));try{localStorage.setItem('securechat.sentFriendRequests.v1',JSON.stringify(state.sentFriendRequests))}catch{};renderList();toast((obj.name||contactName(remote)||'相手')+' がフレンド申請を拒否しました');return;}
       }catch(e){addLog('ERROR','friend request handler',e?.message||String(e))}
       return previousReceive(remote,obj);
     };
@@ -12292,15 +12375,19 @@ boot();
   }
 
   window.handleIncomingFriendRequest=async function(remote,obj){
-    if(!validPeerId(remote)||remote===state.id)return;
-    const row={id:remote,name:String(obj?.name||'ユーザー').trim()||'ユーザー',time:Date.now()};
-    const existing=(state.friendRequests||[]).find(x=>x.id===remote);
+    const peer=String(remote||'').trim();
+    if(!validPeerId(peer)||peer===state.id)return false;
+    const row={id:peer,name:String(obj?.name||'ユーザー').trim()||'ユーザー',time:Number(obj?.time)||Date.now(),requestId:String(obj?.requestId||'')};
+    const existing=(state.friendRequests||[]).find(x=>String(x.id)===peer);
     if(existing)Object.assign(existing,row); else state.friendRequests.push(row);
+    try{localStorage.setItem('securechat.friendRequests.v1',JSON.stringify(state.friendRequests));}catch(error){addLog('WARN','friend request local save',error?.message||String(error));}
     if(state.storageReady)await db.put('friendRequests',row).catch(e=>addLog('WARN','friend request save',e?.message||String(e)));
+    rememberPeerProfile(peer,row.name);
     state.tab='friends';
     renderList();
     try{playNotificationSound()}catch{}
-    toast(row.name+' からフレンド申請');
+    toast(row.name+' からフレンド申請が届きました');
+    return true;
   };
 
   document.addEventListener('click',ev=>{
